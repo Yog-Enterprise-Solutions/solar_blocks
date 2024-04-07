@@ -1,0 +1,32 @@
+{
+ "attach_print": 0,
+ "channel": "Email",
+ "condition": "doc.custom_assign_user_group",
+ "creation": "2023-12-07 01:29:55.878002",
+ "days_in_advance": 0,
+ "docstatus": 0,
+ "doctype": "Notification",
+ "document_type": "Opportunity",
+ "enabled": 1,
+ "event": "Method",
+ "idx": 0,
+ "is_standard": 1,
+ "message": "Design team, <br>\n\nA new opportunity generated and requires maxfit design. Here is the link to the opportunity: <a href=\"https://myerp.solarblocks.us/app/opportunity/{{ doc.name }}\">{{doc.custom_first_name}} {{doc.custom_last_name}}</a>",
+ "method": "after_insert",
+ "modified": "2024-03-28 03:20:13.026249",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "Opportunity is Created and Assigned",
+ "owner": "hemant@onehash.ai",
+ "recipients": [
+  {
+   "receiver_by_document_field": "user,users",
+   "receiver_by_role": ""
+  }
+ ],
+ "send_system_notification": 1,
+ "send_to_all_assignees": 1,
+ "sender": "Solarblocks",
+ "sender_email": "sales@solarblocks.us",
+ "subject": "Opportunity is Created and Assigned"
+}
