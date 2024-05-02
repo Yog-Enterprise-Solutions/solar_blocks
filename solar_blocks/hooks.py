@@ -28,8 +28,20 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+# doctype_js = {
+#     # "Lead" : "public/js/lead.js",
+#     "Project": "public/js/project.js",
+#     "Opportunity": "public/js/opportunity.js",
+#     "Branch": "public/js/branch.js",
+#     "Task": "public/js/task.js",
+#     "Proposal": "public/js/proposal.js",
+#     "Site Visit": "public/js/site_visit.js",
+#     "Quotation": "public/js/quotation.js",
+#     # "Contract Sign Doc": "public/js/contract_sign_doc.js",
+#     # "Contracts" ; "public/js/contracts.js"
+
+#     }
+# doctype_list_js = {"Lead" : "public/js/lead_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -123,11 +135,46 @@ app_license = "mit"
 # Hook on document methods and events
 
 # doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
+# 	"Task": {
+#         # will run before a ToDo record is inserted into database
+#         "after_insert": "solar_blocks.override.task.require_a_call",
+#         "after_save": "solar_blocks.override.task.task_before_save",
+#         "before_save": "solar_blocks.override.task.set_task_priority",
+#         "before_insert": "solar_blocks.override.task.task_dates_update"
+#         # "before_validate": "solar_blocks.solar_blocks.override.task.assign_task"
+#     },
+#     "Project":{
+#         "before_save": "solar_blocks.override.project.project_as",
+#         "after_save": "solar_blocks.override.project.update_auto_number_in_task_for_priority",
+#         "after_insert": "solar_blocks.override.project.project_bs"
+#         # "before_validate": "solar_blocks.solar_blocks.override.project.assign_project_for_require_welcome_call"
+#     },
+#     "Lead": {
+#         "after_save" : "solar_blocks.override.lead.create_event_for_lead"
+#     },
+#     "Opportunity":{
+#         "after_save": "solar_blocks.override.opportunity.assign_after_save_for_maxfit_complete",
+#         "after_insert": "solar_blocks.override.opportunity.assign_and_share_opportunity_initially_from_user_group",
+#         "before_insert": "solar_blocks.override.opportunity.set_user_group_before_insert",
+#         "before_validate": "solar_blocks.override.opportunity.add_task_users_in_opportunity",
+#         "before_save": "solar_blocks.override.opportunity.notify_opportunity",
+#     },
+#     "Error Log": {
+#         "before_insert": "solar_blocks.override.error_log.error_log_fix"
+#     },
+#     "Email Queue":{
+#         "after_insert": "solar_blocks.override.email_queue.email_send"
+#     },
+#     "Quotation": {
+#         "after_insert": "solar_blocks.override.quotation.update_quotation_created_status_in_opportunity",
+#         "after_submit": "solar_blocks.override.quotation.update_quotation_status_in_opportunity",
+#     },
+#     "Proposal":{
+#         "before_save": "solar_blocks.override.proposal.api_call"
+#     },
+#     # "Contract Sign Doc":{
+#     #     "before_save": "solar_blocks.solar_blocks.override.contract_sign_doc.set_value_in_contract"
+#     # }
 # }
 
 # Scheduled Tasks
@@ -135,20 +182,21 @@ app_license = "mit"
 
 # scheduler_events = {
 # 	"all": [
-# 		"solar_blocks.tasks.all"
+# 		"solar_blocks.solar_blocks.override.schedulers.opp_auto_disqualified_in_case_of_meeting_and_appointment",
+#         "solar_blocks.solar_blocks.override.schedulers.auto_disqualified_lead_in_4_weeks"
 # 	],
-# 	"daily": [
-# 		"solar_blocks.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"solar_blocks.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"solar_blocks.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"solar_blocks.tasks.monthly"
-# 	],
+# 	# "daily": [
+# 	# 	"solar_blocks.tasks.daily"
+# 	# ],
+# 	# "hourly": [
+# 	# 	"solar_blocks.tasks.hourly"
+# 	# ],
+# 	# "weekly": [
+# 	# 	"solar_blocks.tasks.weekly"
+# 	# ],
+# 	# "monthly": [
+# 	# 	"solar_blocks.tasks.monthly"
+# 	# ],
 # }
 
 # Testing
