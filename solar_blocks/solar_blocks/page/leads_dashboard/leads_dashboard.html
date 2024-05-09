@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Table with Sub-columns</title>
+<style>
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<table>
+  <thead>
+    <tr>
+      <th>Go To Report</th>
+      <th>No of jobs</th>
+      <th colspan="3">No jobs in each Timelines</th>
+      <th>Average Ageing</th>
+    </tr>
+    <tr>
+      <th></th>
+      <th></th>
+      <th>On Time</th>
+      <th>Before Time</th>
+      <th>Late</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if data != 0 %}
+    {% for record in data %}
+    <tr>
+      <td><a href="{{ record.report_name }}">{{ record.lead_name }}</a></td>
+      <td>{{ record.total_no_of_jobs }}</td>
+      <td>{{ record.on_time }}</td>
+      <td>{{ record.before_time }}</td>
+      <td>{{ record.late }}</td>
+      <td>{{ record.average }}</td>
+     
+    </tr>
+    {% endfor %}
+    {% endif %}
+  </tbody>
+</table>
+
+</body>
+</html>

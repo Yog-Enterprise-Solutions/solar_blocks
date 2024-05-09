@@ -26,6 +26,7 @@ def get_columns():
 		{"fieldname": "creation", "label": ("Date Created"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "lead_owner", "label": ("Created By"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "aging", "label": ("Ageing"), "fieldtype": "Data", "width": 100},
+		{"fieldname": "reminder_date1", "label": ("Date Scheduled"), "fieldtype": "Data", "width": 100},
 		{"fieldname": "custom_customer_availability", "label": ("Additional Notes"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "timeline", "label": ("Timeline"), "fieldtype": "Data", "width": 100}
 		
@@ -39,8 +40,8 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Lead",
-		fields=["first_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
-		filters=[{"lead_sub_status":'Lead'}])
+		fields=["first_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status","reminder_date1"],
+		filters=[{"lead_sub_status":'Call at later Date'}])
 	
 	total_age=0
 	total_no_of_jobs=0
