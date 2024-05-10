@@ -43,7 +43,6 @@ def get_data(filter,report_name):
         "average":average
     }
     
-    # frappe.throw(f"{final_data}")
     
     return final_data
 
