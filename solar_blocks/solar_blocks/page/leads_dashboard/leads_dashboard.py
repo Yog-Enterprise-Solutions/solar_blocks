@@ -40,10 +40,9 @@ def get_data(filter,report_name):
         "on_time": on_time,
         "before_time": before_time,
         "late": late,
-        "average": average
+        "average":average
     }
     
-    # frappe.throw(f"{final_data}")
     
     return final_data
 

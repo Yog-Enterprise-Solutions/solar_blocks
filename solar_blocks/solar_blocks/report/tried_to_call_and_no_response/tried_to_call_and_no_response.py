@@ -39,19 +39,25 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Lead",
-		fields=["first_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
+		fields=["first_name","last_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
 		filters=[{"lead_sub_status":'Tried to Call & no response'}])
 	
 	total_age=0
 	total_no_of_jobs=0
 	for lead in data:
+		if lead['last_name'] is not None:
+			full_name=lead['first_name']+" "+lead['last_name']
+		else:
+			full_name=lead['first_name']
+		lead['first_name']=full_name
 		creation_date = lead.get('creation')
 		if creation_date:
 			days_aging = (datetime.now() - creation_date).days
 			lead['aging'] =days_aging
 			total_age+=days_aging
 			total_no_of_jobs+=1
-			lead['creation']=frappe.utils.getdate(creation_date)
+			# lead['creation']=frappe.utils.getdate(creation_date)
+			lead['creation']=creation_date.strftime('%m-%d-%Y')
 			after_three_day = frappe.utils.add_to_date(frappe.utils.getdate(creation_date), days=3)
 			if days_aging>3:
 				lead['timeline']='Late'
