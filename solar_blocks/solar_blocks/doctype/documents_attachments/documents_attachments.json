@@ -20,7 +20,8 @@
    "fieldname": "name1",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Description"
+   "label": "Description",
+   "read_only": 1
   },
   {
    "columns": 4,
@@ -33,7 +34,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-05-16 03:25:38.049772",
+ "modified": "2024-05-16 03:56:44.659494",
  "modified_by": "Administrator",
  "module": "Solar Blocks",
  "name": "Documents Attachments",
