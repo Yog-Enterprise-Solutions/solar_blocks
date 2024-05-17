@@ -1,0 +1,45 @@
+{
+ "cards": [],
+ "charts": [
+  {
+   "chart": "Leads",
+   "width": "Half"
+  },
+  {
+   "chart": "Pending Additional Information",
+   "width": "Half"
+  },
+  {
+   "chart": "Tried to Call & no response",
+   "width": "Half"
+  },
+  {
+   "chart": "Call at later date",
+   "width": "Half"
+  },
+  {
+   "chart": "Not Interested",
+   "width": "Half"
+  },
+  {
+   "chart": "Lead Disqualified",
+   "width": "Half"
+  },
+  {
+   "chart": "Convert to opportunity",
+   "width": "Half"
+  }
+ ],
+ "creation": "2024-05-11 04:17:14.032578",
+ "dashboard_name": "Lead Dashboard",
+ "docstatus": 0,
+ "doctype": "Dashboard",
+ "idx": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "modified": "2024-05-17 03:50:17.945994",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "Lead Dashboard",
+ "owner": "Administrator"
+}
