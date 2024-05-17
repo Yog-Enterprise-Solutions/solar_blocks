@@ -1,0 +1,13 @@
+{
+ "creation": "2024-05-11 04:20:54.037909",
+ "docstatus": 0,
+ "doctype": "Dashboard Chart Source",
+ "idx": 0,
+ "modified": "2024-05-11 04:20:54.037909",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "Solar",
+ "owner": "Administrator",
+ "source_name": "Solar",
+ "timeseries": 0
+}
