@@ -1,0 +1,48 @@
+{
+ "cards": [],
+ "charts": [
+  {
+   "width": "Half"
+  },
+  {
+   "chart": "Opportunity",
+   "width": "Half"
+  },
+  {
+   "chart": "Appointment Scheduled",
+   "width": "Half"
+  },
+  {
+   "chart": "Maxfit Completed",
+   "width": "Half"
+  },
+  {
+   "chart": "Proposal",
+   "width": "Half"
+  },
+  {
+   "chart": "Contract Sent",
+   "width": "Half"
+  },
+  {
+   "chart": "Client Won",
+   "width": "Half"
+  },
+  {
+   "chart": "Client Lost",
+   "width": "Half"
+  }
+ ],
+ "creation": "2024-05-23 01:27:38.207449",
+ "dashboard_name": "Opportunity Dashboard",
+ "docstatus": 0,
+ "doctype": "Dashboard",
+ "idx": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "modified": "2024-05-23 01:50:34.754593",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "Opportunity Dashboard",
+ "owner": "Administrator"
+}
