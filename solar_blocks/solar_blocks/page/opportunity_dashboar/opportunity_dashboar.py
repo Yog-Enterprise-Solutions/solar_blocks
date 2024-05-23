@@ -8,12 +8,12 @@ def get_data(filter,report_name):
     late = 0
     before_time = 0
     on_time = 0
-    dashboard='Lead Dashboard'
+    dashboard='Opportunity Dashboard'
     
     data = frappe.get_all(
-        doctype="Lead",
-        fields=["creation", "lead_sub_status"],
-        filters=[{"lead_sub_status":filter}]
+        doctype="Opportunity",
+        fields=["creation", "opportunity_status"],
+        filters=[{"opportunity_status":filter}]
     )
     
     for lead in data:
@@ -49,22 +49,23 @@ def get_data(filter,report_name):
     return final_data
 
 @frappe.whitelist()
-def get_leads():
+def get_opportunity():
     data=[]
-    #lead 
-    data.append(get_data('Lead','Lead'))
-    #pending additional information
-    data.append(get_data('Pending additional information','Pending Additional Information'))
-    #Tried to Call & no response
-    data.append(get_data('Tried to Call & no response','Tried to call and no response'))
-    #Call at later Date
-    data.append(get_data('Call at later Date','Call at later date'))
-    #Not Interested
-    data.append(get_data('Not Interested','Not Interested'))
-    #Lead Disqualified
-    data.append(get_data('Lead Disqualified','Lead Disqualified'))
-    #Convert to Opportunity
-    data.append(get_data('Convert to Opportunity','Convert to Opportunity'))
-    # frappe.throw(f"{data}")
+    #Opportunity 
+    data.append(get_data('Opportunity','Opportunity'))
+    #Appointment Scheduled
+    data.append(get_data('Appointment Scheduled','Appointment Scheduled'))
+    #Maxfit Completed
+    data.append(get_data('Maxfit Completed','Maxfit Completed'))
+    #Proposal
+    data.append(get_data('Proposal','Proposal'))
+    #Contract Sent
+    data.append(get_data('Contract Sent','Contract Sent'))
+    #Client Won
+    data.append(get_data('Client Won','Opportunity Status'))
+    #Client Lost
+    data.append(get_data('Client Lost','Opportunity Status'))
+    #Client Disqualified
+    data.append(get_data('Client Disqualified','Opportunity Status'))
     return data
 
