@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Table with Sub-columns</title>
+<style>
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: center;
+    color: black;
+    
+  }
+  
+
+  .on-time {
+    background-color: green;
+    color: rgb(1, 1, 2);
+  }
+
+  .before-time {
+    background-color: yellow;
+    color: rgb(1, 1, 2);
+  }
+
+  .late {
+    background-color: red;
+    color: rgb(1, 1, 2);
+  }
+
+  .head{
+    background-color: rgb(219, 215, 211);
+    color: black;
+  }
+
+  
+  .go-to a {
+    color: black; /* Set color for anchor elements within .go-to */
+}
+</style>
+</head>
+<body>
+
+<table>
+  <thead>
+    <tr>
+      <th class="head">Go To Report</th>
+      <th class="head">No of jobs</th>
+      <th colspan="3" class="head">No jobs in each Timelines</th>
+      <th class="head">Average Ageing</th>
+      <!-- <th class="head">Weekly Graph</th> -->
+    </tr>
+    <tr>
+      <th></th>
+      <th></th>
+      <th class="on-time">On Time</th>
+      <th class="before-time">Before Time</th>
+      <th class="late">Late</th>
+      <th></th>
+      <!-- <th></th> -->
+    </tr>
+  </thead>
+  <tbody>
+    {% if data != 0 %}
+    {% for record in data %}
+    <tr>
+      <td class="go-to"><a href="{{ record.report_name }}">{{ record.project_name }}</a></td>
+      <td>{{ record.total_no_of_jobs }}</td>
+      <td>{{ record.on_time }}</td>
+      <td>{{ record.before_time }}</td>
+      <td>{{ record.late }}</td>
+      <td>{{ record.average }}</td>
+      <!-- <td class="go-to"><a href="{{ record.dashboard_name }}">Weekly Graph</a></td> -->
+     
+    </tr>
+    {% endfor %}
+    {% endif %}
+  </tbody>
+</table>
+
+</body>
+</html>
