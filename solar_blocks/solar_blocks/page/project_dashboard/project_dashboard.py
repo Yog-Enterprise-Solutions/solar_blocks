@@ -64,7 +64,7 @@ def get_project():
     #Electrical Permit
     data.append(get_data('Electrical Permit','Electrical Permit'))
     #Procurements
-    data.append(get_data('Procurements','Procurements'))
+    data.append(get_data('Procurement','Procurement'))
     #Pre Install Work
     data.append(get_data('Pre Install Work','Pre Install Date'))
     #Installation Work
