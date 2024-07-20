@@ -41,7 +41,7 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Opportunity",
-		fields=["custom_first_name","custom_last_name","expected_closing_date","created_by","creation","date_and_time_of_appointment","date_and_time","notes_for_site_review"],
+		fields=["name","custom_first_name","custom_last_name","expected_closing_date","created_by","creation","date_and_time_of_appointment","date_and_time","notes_for_site_review"],
 		filters=[{"opportunity_status":'Appointment Scheduled'}])
 	
 	total_age=0

@@ -22,6 +22,7 @@ def get_columns():
 	columns = [
 	
 		{"fieldname": "first_name", "label": ("Name of job"), "fieldtype": "Data", "width": 150},
+		# {"fieldname": "name", "label": ("Name"), "fieldtype": "Data", "width": 150},
 		{"fieldname": "source", "label": ("Source"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "creation", "label": ("Date Created"), "fieldtype": "Data", "width": 200},
 		{"fieldname": "lead_owner", "label": ("Created By"), "fieldtype": "Data", "width": 200},
@@ -39,7 +40,7 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Lead",
-		fields=["first_name","last_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
+		fields=["name","first_name","last_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
 		filters=[{"lead_sub_status":'Lead'}])
 	
 	total_age=0

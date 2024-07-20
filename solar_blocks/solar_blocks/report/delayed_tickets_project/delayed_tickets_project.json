@@ -1,0 +1,48 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2024-06-23 22:20:55.485801",
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "filters": [],
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Solar Block",
+ "letterhead": null,
+ "modified": "2024-06-23 22:21:01.956722",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "Delayed Tickets Project",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Project",
+ "report_name": "Delayed Tickets Project",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "Sales User"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Sales Field Agent"
+  },
+  {
+   "role": "Design Team"
+  },
+  {
+   "role": "Sales Closure"
+  },
+  {
+   "role": "Customer Success"
+  },
+  {
+   "role": "Project Managers"
+  },
+  {
+   "role": "Finance Team"
+  }
+ ]
+}

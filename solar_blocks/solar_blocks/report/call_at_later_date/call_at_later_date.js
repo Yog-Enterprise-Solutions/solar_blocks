@@ -14,6 +14,12 @@ frappe.query_reports["Call at later date"] = {
 		else if (column.fieldname == "timeline" && data && data.timeline == 'Before time') {
 			value = "<span style='color:yellow'>" + value + "</span>";
 		}
+		// Add hyperlink for first_name
+        if (column.fieldname == "first_name"&& data.name) {
+            const baseURL = window.location.origin + "/app/lead/";
+            const leadURL = baseURL + data.name;
+            value = `<a href="${leadURL}" target="_blank">${value}</a>`;
+        }
 
 
 		return value;

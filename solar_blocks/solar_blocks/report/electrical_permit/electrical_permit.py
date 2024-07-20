@@ -40,7 +40,7 @@ def get_data(filters):
 	data = frappe.get_all(
     doctype="Project",
     fields=["name","project_name", "creation"],
-    filters={"custom_project_stage": "Electrical Permit", "project_status": ("!=", "Cancelled")}
+    filters={"custom_stage": ["like", "%Electrical Permit%"], "project_status": ("!=", "Cancelled")}
 )
 
 	

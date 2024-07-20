@@ -15,6 +15,13 @@ frappe.query_reports["Tried to call and no response"] = {
 			value = "<span style='color:yellow'>" + value + "</span>";
 		}
 
+		// Add hyperlink for first_name
+        if (column.fieldname == "first_name"&& data.name) {
+            const baseURL = window.location.origin + "/app/lead/";
+            const leadURL = baseURL + data.name;
+            value = `<a href="${leadURL}" target="_blank">${value}</a>`;
+        }
+
 
 		return value;
 	},

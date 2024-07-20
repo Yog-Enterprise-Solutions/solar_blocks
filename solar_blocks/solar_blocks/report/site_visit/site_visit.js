@@ -12,6 +12,12 @@ frappe.query_reports["Site Visit"] = {
 		else if (column.fieldname == "timeline" && data && data.timeline == 'Before time') {
 			value = "<span style='color:yellow'>" + value + "</span>";
 		}
+		// Add hyperlink for first_name
+        if (column.fieldname == "project_name"&& data.name) {
+            const baseURL = window.location.origin + "/app/project/";
+            const leadURL = baseURL + data.name;
+            value = `<a href="${leadURL}" target="_blank">${value}</a>`;
+        }
 
 
 		return value;

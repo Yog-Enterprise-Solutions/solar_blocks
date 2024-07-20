@@ -1,6 +1,15 @@
 # Copyright (c) 2024, yes@tranqwality.com and contributors
 # For license information, please see license.txt
 
+# import frappe
+
+
+def execute(filters=None):
+	columns, data = [], []
+	return columns, data
+# Copyright (c) 2024, yes@tranqwality.com and contributors
+# For license information, please see license.txt
+
 import frappe
 from datetime import datetime
 from frappe.utils import now_datetime, get_datetime

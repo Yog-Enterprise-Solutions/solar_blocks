@@ -9,12 +9,18 @@ def get_data(filter,report_name):
     before_time = 0
     on_time = 0
     dashboard='Project Dashboard'
-    
-    data = frappe.get_all(
+    if filter=='Interconnection' or filter=='Structural Permitting' or filter=='Electrical Permit' or filter=='Installation Work' or filter=='Pre Install Work' or filter=="Structural Inspection" or filter=='Electrical Inspection' or filter=="PTO":
+        data = frappe.get_all(
         doctype="Project",
         fields=["creation", "custom_project_stage"],
-        filters=[{"custom_project_stage":filter}]
+        filters={"custom_stage": ["like", f"%{filter}%"],"project_status": ("!=", "Cancelled")}
     )
+    else:
+        data = frappe.get_all(
+            doctype="Project",
+            fields=["creation", "custom_project_stage"],
+            filters={"custom_project_stage":filter,"project_status": ("!=","Cancelled")}
+        )
     
     for project in data:
         creation_date = project.get('creation')
@@ -64,11 +70,11 @@ def get_project():
     #Electrical Permit
     data.append(get_data('Electrical Permit','Electrical Permit'))
     #Procurements
-    data.append(get_data('Procurement','Procurement'))
+    data.append(get_data('Procurements','Procurement'))
     #Pre Install Work
     data.append(get_data('Pre Install Work','Pre Install Date'))
     #Installation Work
-    data.append(get_data('Installation Work','Installation Work'))
+    data.append(get_data('Installation Work','Install Work'))
     #Commissioning
     data.append(get_data('Commissioning','Commissioning'))
     #Electrical Inspection

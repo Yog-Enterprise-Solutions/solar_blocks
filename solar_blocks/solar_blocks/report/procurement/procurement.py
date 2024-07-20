@@ -8,8 +8,6 @@ from frappe.utils import now_datetime, get_datetime
 
 def execute(filters=None):
 	columns, data = get_columns(), get_data(filters)
-	# frappe.throw(f"{data}")
-	# frappe.log_error('data',data)
 	if not data:
 		frappe.msgprint("No records found")
 	return columns, data
@@ -80,6 +78,7 @@ def get_data(filters):
 	if total_age>0 and total_no_of_jobs>0:
 		average=round((total_age/total_no_of_jobs),2)
 		data.append({'project_name': None, 'expected_end_date': None, 'creation': 'Average ageing', 'custom_completed_by': None, 'aging':average, 'timeline': None})
+	# frappe.throw(f"{data}")
 	return data
 
 

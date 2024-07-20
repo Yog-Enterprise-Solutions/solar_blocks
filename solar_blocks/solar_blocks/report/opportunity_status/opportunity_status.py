@@ -41,7 +41,7 @@ def get_columns():
 def get_data(filters):
 	data = frappe.get_all(
     doctype="Opportunity",
-    fields=["opportunity_status","custom_first_name", "custom_last_name", "expected_closing_date", "created_by", "creation", "opportunity_status"],
+    fields=["name","opportunity_status","custom_first_name", "custom_last_name", "expected_closing_date", "created_by", "creation", "opportunity_status"],
     filters=[{"opportunity_status": ["in", ['Client Won', 'Client Lost', 'Client Disqualified']]}]
 )
 	total_age=0

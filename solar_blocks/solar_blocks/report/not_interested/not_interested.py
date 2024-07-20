@@ -39,7 +39,7 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Lead",
-		fields=["first_name","last_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
+		fields=["name","first_name","last_name","lead_owner","creation","source","custom_customer_availability","lead_sub_status"],
 		filters=[{"lead_sub_status":'Not Interested'}])
 	
 	total_age=0

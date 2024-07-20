@@ -34,14 +34,11 @@ def get_columns():
 	return columns
 
 
-
-
-
 def get_data(filters):
 	data = frappe.get_all(
     doctype="Project",
     fields=["name","project_name", "expected_end_date", "creation"],
-    filters={"custom_project_stage": "PTO", "project_status": ("!=", "Cancelled")}
+    filters={"custom_stage": ["like", "%PTO%"], "project_status": ("!=", "Cancelled")}
 )
 
 	

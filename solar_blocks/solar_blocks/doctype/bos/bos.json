@@ -1,0 +1,186 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:BOS-{project_name}-{##}",
+ "creation": "2024-07-06 02:50:29.984726",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_862y",
+  "amended_from",
+  "section_break_4qun",
+  "project_name",
+  "column_break_oar5",
+  "project",
+  "section_break_glhv",
+  "solar_items",
+  "electrical",
+  "ironridge_skirts",
+  "roof_tech_pitched_roof_attachments",
+  "unirac_flat_roof",
+  "ironridge_pitched_roof",
+  "ironridge_flat_roof",
+  "conduits_and_accesories_mettalic",
+  "wires_cables",
+  "approvals_fees",
+  "manpower",
+  "section_break_htii",
+  "totals_of__services",
+  "subtotal_section",
+  "sub_total"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_862y",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "BOS",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "solar_items",
+   "fieldtype": "Table",
+   "label": "SOLAR ITEMS",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "electrical",
+   "fieldtype": "Table",
+   "label": "ELECTRICAL",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "ironridge_skirts",
+   "fieldtype": "Table",
+   "label": "IRONRIDGE SKIRTS",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "roof_tech_pitched_roof_attachments",
+   "fieldtype": "Table",
+   "label": "ROOF TECH PITCHED ROOF ATTACHMENTS",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "unirac_flat_roof",
+   "fieldtype": "Table",
+   "label": "UNIRAC FLAT ROOF",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "ironridge_pitched_roof",
+   "fieldtype": "Table",
+   "label": "IRONRIDGE PITCHED ROOF",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "ironridge_flat_roof",
+   "fieldtype": "Table",
+   "label": "IRONRIDGE FLAT ROOF",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "conduits_and_accesories_mettalic",
+   "fieldtype": "Table",
+   "label": "CONDUITS AND ACCESORIES (METTALIC)",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "wires_cables",
+   "fieldtype": "Table",
+   "label": "WIRES CABLES",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "approvals_fees",
+   "fieldtype": "Table",
+   "label": "APPROVALS FEES",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "manpower",
+   "fieldtype": "Table",
+   "label": "MANPOWER",
+   "options": "BOM Item"
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name"
+  },
+  {
+   "fieldname": "column_break_oar5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "section_break_4qun",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_glhv",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_htii",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "sub_total",
+   "fieldtype": "Currency",
+   "label": "Sub Total",
+   "precision": "2"
+  },
+  {
+   "fieldname": "subtotal_section",
+   "fieldtype": "Section Break",
+   "label": "SubTotal"
+  },
+  {
+   "fieldname": "totals_of__services",
+   "fieldtype": "Table",
+   "label": "Totals of  Services",
+   "options": "Totals"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2024-07-10 08:17:26.465439",
+ "modified_by": "Administrator",
+ "module": "Solar Blocks",
+ "name": "BOS",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

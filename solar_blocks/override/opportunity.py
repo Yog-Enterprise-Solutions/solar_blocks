@@ -1,5 +1,19 @@
 import frappe
 
+from erpnext.crm.doctype.opportunity.opportunity  import Opportunity
+
+class CustomOpportunity(Opportunity):
+    def after_insert(self):
+        if self.opportunity_from == "Lead":
+            frappe.get_doc("Lead", self.party_name).db_set('status','Open')
+
+            # link_open_tasks(self.opportunity_from, self.party_name, self)
+            # link_open_events(self.opportunity_from, self.party_name, self)
+            # if frappe.db.get_single_value("CRM Settings", "carry_forward_communication_and_comments"):
+            #     copy_comments(self.opportunity_from, self.party_name, self)
+            #     link_communications(self.opportunity_from, self.party_name, self)
+
+
 def assign_after_save_for_maxfit_complete(doc,method=None):
     if doc.opportunity_status=='Maxfit Completed':
         user_group=frappe.db.get_all("User Group Member",filters={'parent':doc.custom_assign_user_group},fields={'*'})
@@ -190,3 +204,84 @@ def notify_opportunity(doc,method=None):
     # 	child_row = doc.append("taskss", {})
     # 	child_row.subject = t.subject
     # 	child_row.task_status = t.task_status
+
+
+#assign opportunity on insert -----------------
+
+def assign_and_share(user_group, name):
+    user_group_members = frappe.db.get_all("User Group Member", filters={'parent': user_group}, fields={'*'})
+    for member in user_group_members:
+        todo = frappe.new_doc('ToDo')
+        todo.allocated_to = member.user
+        todo.reference_type = "Opportunity"
+        todo.reference_name = name
+        todo.description = "Assign"
+        todo.insert(ignore_permissions=True)
+        if not frappe.db.exists('DocShare',{'user':member.user,'share_name':name}):
+            share = frappe.new_doc('DocShare')
+            share.user = member.user
+            share.share_doctype = "Opportunity"
+            share.share_name = name
+            share.read = 1
+            share.write = 1
+            share.notify_by_email = 1
+            share.insert(ignore_permissions=True)
+        
+
+def enqueue_todo_and_share(doc, method=None):
+    user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
+    for member in user_group_members:
+        if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):
+            frappe.enqueue(
+            assign_and_share,
+            now=True,
+            # queue='long',
+            job_name='Assign Todo On Opportunity Insert',
+            user_group=doc.custom_assign_user_group,
+            name=doc.name
+        )
+
+# ------------------------------------
+
+
+#assign opportunity on after save on maxfit completed -----------------
+
+def assign_and_share_opportunity_on_maxfit_completed(user_group, name):
+    user_group=frappe.db.get_all("User Group Member",filters={'parent':user_group},fields={'*'})
+    # frappe.msgprint(f"{user_group}")
+    for i in user_group:
+        todo = frappe.new_doc('ToDo')
+        todo.allocated_to = i.user
+        todo.reference_type = "Opportunity"
+        todo.reference_name =name
+        todo.description = "Assign"
+        todo.insert(ignore_permissions=True)
+        if not frappe.db.exists('DocShare',{'user':i.user,'share_name':name}):
+            share = frappe.new_doc('DocShare')
+            share.user = i.user
+            share.share_doctype = "Opportunity"
+            share.share_name =name
+            share.read = 1
+            share.write=1
+            share.notify_by_email=1
+            share.insert(ignore_permissions=True)
+        
+
+        
+
+def enqueue_todo_and_share_on_maxfit_completed(doc, method=None):
+    # frappe.throw("lll")
+    if doc.opportunity_status=='Maxfit Completed':
+        user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
+        for member in user_group_members:
+            if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):
+                frappe.enqueue(
+                assign_and_share_opportunity_on_maxfit_completed,
+                now=True,
+                # queue='long',
+                job_name='Assign Todo On Maxfit Completed',
+                user_group=doc.custom_assign_user_group,
+                name=doc.name
+            )
+
+# ------------------------------------

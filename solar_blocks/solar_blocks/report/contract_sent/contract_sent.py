@@ -38,7 +38,7 @@ def get_columns():
 def get_data(filters):
 	data=frappe.get_all(
 		doctype="Opportunity",
-		fields=["custom_first_name","custom_last_name","expected_closing_date","custom_contract_sent_by","creation"],
+		fields=["name","custom_first_name","custom_last_name","expected_closing_date","custom_contract_sent_by","creation"],
 		filters=[{"opportunity_status":'Contract Sent'}])
 	
 	total_age=0
