@@ -29,11 +29,11 @@ app_license = "mit"
 
 # include js in doctype views
 doctype_js = {
-#     # "Lead" : "public/js/lead.js",
+    "Lead" : "public/js/lead.js",
 #     "Project": "public/js/project.js",
-#     "Opportunity": "public/js/opportunity.js",
+    "Opportunity": "public/js/opportunity.js"
 #     "Branch": "public/js/branch.js",
-    "Task": "public/js/Task.js"
+    # "Task": "public/js/Task.js"
 #     "Proposal": "public/js/proposal.js",
 #     "Site Visit": "public/js/site_visit.js",
 #     "Quotation": "public/js/quotation.js",
@@ -149,35 +149,32 @@ doc_events = {
         "before_insert": "solar_blocks.override.opportunity.set_user_group_and_document_status_template_before_insert",
         "validate": "solar_blocks.override.opportunity.assign_users_and_send_mails"
     },
-# 	"Task": {
-#         # will run before a ToDo record is inserted into database
-#         "after_insert": "solar_blocks.override.task.require_a_call",
-#         "after_save": "solar_blocks.override.task.task_before_save",
-#         "before_save": "solar_blocks.override.task.set_task_priority",
-#         "before_insert": "solar_blocks.override.task.task_dates_update"
-#         # "before_validate": "solar_blocks.solar_blocks.override.task.assign_task"
-#     },
+	"Task": {
+        "after_insert": "solar_blocks.override.task.after_insert",
+        "on_update": "solar_blocks.override.task.after_save",
+        "validate": "solar_blocks.override.task.before_save",
+        "before_insert": "solar_blocks.override.task.before_insert",
+        "before_validate": "solar_blocks.override.task.before_validate"
+    },
     "Project":{
         "on_update": "solar_blocks.override.project.after_save",
         "validate": "solar_blocks.override.project.before_save",
         "after_insert": "solar_blocks.override.project.after_insert"
     },
-   
-   
-#     "Error Log": {
-#         "before_insert": "solar_blocks.override.error_log.error_log_fix"
-#     },
-#     "Email Queue":{
-#         "after_insert": "solar_blocks.override.email_queue.email_send"
-#     },
+    "Error Log": {
+        "before_insert": "solar_blocks.override.error_log.error_log_fix"
+    },
+    "Email Queue":{
+        "after_insert": "solar_blocks.override.email_queue.email_send"
+    },
     "BOS":{
         "validate": "solar_blocks.override.bos.calculate_totals_and_subtotal",
         "on_submit": "solar_blocks.override.bos.calculate_totals_and_subtotal"
+    },
+    "Quotation": {
+        "after_insert": "solar_blocks.override.quotation.update_quotation_created_status_in_opportunity",
+        "after_submit": "solar_blocks.override.quotation.update_quotation_status_in_opportunity",
     }
-#     "Quotation": {
-#         "after_insert": "solar_blocks.override.quotation.update_quotation_created_status_in_opportunity",
-#         "after_submit": "solar_blocks.override.quotation.update_quotation_status_in_opportunity",
-#     },
 #     "Proposal":{
 #         "before_save": "solar_blocks.override.proposal.api_call"
 #     },

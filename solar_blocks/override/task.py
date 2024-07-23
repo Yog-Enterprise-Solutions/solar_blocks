@@ -138,27 +138,589 @@ def send_email_on_task(recipient_email,custom_customer_name,subject,custom_sched
     frappe.msgprint("Email send")
     return 1
 
-# -------------------------------------------------------------------------------------------------------------
-def require_a_call(doc,method=None):
-    def assign(doc,group,doc_name):
-        user_group=frappe.db.get_all("User Group Member",filters={'parent':group},fields={'*'})
-        for i in user_group:
-            todo = frappe.new_doc('ToDo')
-            todo.allocated_to = i.user
-            todo.reference_type = "Task"
-            todo.reference_name = doc_name
-            todo.description = "Assign"
-            todo.insert(ignore_permissions=True)
-            
-            share = frappe.new_doc('DocShare')
-            share.user = i.user
-            share.share_doctype = "Task"
-            share.share_name = doc_name
-            share.read = 1
-            share.write=1
-            share.notify_by_email=1
-            share.insert(ignore_permissions=True)
 
+# -------------------------------------------------HELPER fUNCTIONS---------------------------------
+def assign(doc,group,doc_name):
+    user_group=frappe.db.get_all("User Group Member",filters={'parent':group},fields={'*'})
+    for i in user_group:
+        todo = frappe.new_doc('ToDo')
+        todo.allocated_to = i.user
+        todo.reference_type = "Task"
+        todo.reference_name = doc_name
+        todo.description = "Assign"
+        todo.insert(ignore_permissions=True)
+        
+        share = frappe.new_doc('DocShare')
+        share.user = i.user
+        share.share_doctype = "Task"
+        share.share_name = doc_name
+        share.read = 1
+        share.write=1
+        share.notify_by_email=1
+        share.insert(ignore_permissions=True)
+
+def set_customer(doc):
+    customer_name=frappe.db.get_value('Project',doc.project,'project_name')
+    doc.db_set('custom_customer_name',customer_name)
+
+
+def update_multiple_custom_stage(project_name, remove_value):
+    current_stage = frappe.db.get_value('Project', project_name, 'custom_stage')
+    if current_stage:
+        stage_list = current_stage.split(",")
+        if remove_value in stage_list:
+            stage_list.remove(remove_value)
+        final_stage = ','.join(stage_list)
+        if len(stage_list)>0:
+            frappe.db.set_value('Project', project_name, {'custom_stage':final_stage,'custom_project_stage':stage_list[0]})
+
+
+def create_event_with_participants(doc,date,formatted_date,schedule_task):
+        project=frappe.db.get_value('Project',doc.project,['opportunity','custom_first_name','custom_last_name','custom_street'],as_dict=1)
+        lead_name=frappe.db.get_value('Opportunity',project['opportunity'],'party_name')
+        subject=f"{schedule_task} is scheduled at {formatted_date} for {project['custom_first_name']} {project['custom_last_name']} at {project['custom_street']}"
+        event = frappe.new_doc("Event")
+        event.subject = subject  
+        event.starts_on = date
+        event.sync_with_google_calendar = 1
+        event.google_calendar = "erp calendar"
+        # participants = [{"reference_doctype": "Task", "reference_docname": doc.name, "email": doc.email}]
+        participants = []
+        user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assigned_group}, fields={'user'})
+        for user_group_member in user_group_members:
+            email = user_group_member.user
+            participants.append({"reference_doctype": "Lead", "reference_docname":lead_name, "email":email})
+        for participant_data in participants:
+            event_participant = event.append('event_participants', participant_data)
+        event.save()
+
+# -----------------------------------------------doc events--------------------------------------------------------------
+
+def after_save(doc,Method=None):
+    if doc.subject.lower() == "welcome call":
+        set_customer(doc)
+        if doc.project_status=='Completed':
+            doc.db_set("project_status", "Completed")
+        else:
+            doc.db_set("project_status", "In Progress")
+            # doc.db_set("custom_assigned_group","Customer Success")
+            # group="Customer Success"
+            # doc_name=doc.name
+            # assign(doc,group,doc_name)
+            # Check if the document is being saved for the first time
+            # frappe.msgprint("Document is not new.")
+            # # Document is not new, so we can change the project status if needed
+            # if doc.project_status != 'Completed' and doc.project_status != 'Cancelled' \
+            #         and doc.project_status != 'Not Started' and doc.project_status != 'On Hold':
+            #     doc.db_set("project_status", "In Progress")
+            #     frappe.msgprint("Project status updated to 'In Progress'.")
+            # else:
+            #     frappe.msgprint("Project status remains unchanged.")
+        # else:
+        #     frappe.msgprint("Document is new.")
+        #     # Document is new, so set the project status to "In Progress"
+        #     doc.db_set("project_status", "In Progress")
+        #     frappe.msgprint("Project status set to 'In Progress'.")
+
+
+        if doc.briefed_about_contract_add_ons_ and doc.discuss_any_adds_on and doc.all_documents_collected_:
+                pass
+        else:
+            if doc.project_status=="Completed":
+                frappe.throw('Task Status Should not be Completed !')
+                    
+        if doc.project_status=="Completed":
+            if doc.completed_on:
+                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Site Visit'},fields=['*'])
+                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Site Visit','custom_project_stage':'Site Visit'})
+                for nm in ts:
+                    tsn=frappe.get_doc('Task',nm.name)
+                    tsn.started_on = doc.completed_on
+                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
+                    tsn.custom_assigned_group="Project Managers"
+                    # assign_task(doc,"Project Managers")
+                    tsn.custom_assigned_group="Project Managers"
+                    group="Project Managers"
+                    doc_name=nm.name
+                    status_changed = doc.has_value_changed("project_status")
+                    if status_changed:
+                        tsn.project_status="In Progress"
+                        assign(doc,group,doc_name)
+                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                    tsn.save()
+                    break;
+
+    if doc.subject.lower() == "site visit":
+            set_customer(doc)
+            if doc.site_visit_scheduled and doc.site_visit_completed and doc.pre_install_review_completed:
+                    pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Engineering'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Engineering','custom_project_stage':'Engineering'})
+                
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 4)
+                        tsn.custom_assigned_group="Design Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        doc_name=nm.name
+                        group="Design Team"
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+                    
+    if doc.subject.lower() == "engineering":
+            set_customer(doc)
+            if doc.complete_design_package and doc.pe_letter and doc.bom and doc.custom_enphase_account_setup:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Interconnection'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Interconnection,Structural Permitting,Electrical Permit','custom_project_stage':'Interconnection'})
+                
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
+                        tsn.custom_assigned_group="Interconnection Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Interconnection Team"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+                        
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'STRUCTURAL PERMITTING'},fields=['*'])
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
+                        tsn.custom_assigned_group="Permitting Team"
+                        group="Permitting Team"
+                        doc_name=nm.name
+                        status_changed = doc.has_value_changed("project_status")
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+                    #section modify electrical permit   
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Electrical Permit'},fields=['*'])
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
+                        tsn.custom_assigned_group="Permitting Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Permitting Team"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.") 
+    if doc.subject.lower() == "structural permitting":
+            set_customer(doc)
+            if doc.submitted_for_permits and doc.permits_approved and doc.custom_work_permit_received:
+                if doc.project_status=="Completed":
+                    update_multiple_custom_stage(doc.project,'Structural Permitting')
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+    
+    #modify thisline from strutural permitting to electrical permit
+    if doc.subject.lower() == "electrical permit":
+            set_customer(doc)
+            if doc.submitted_for_permits and doc.permits_approved:
+                if doc.project_status=="Completed":
+                    pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+                
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                update_multiple_custom_stage(doc.project, 'Electrical Permit')
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Procurements'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Procurements','custom_project_stage':'Procurements'})
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 4)
+                        tsn.custom_assigned_group="Procurement Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Procurement Team"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+                    
+    if doc.subject.lower() == "procurements":
+            set_customer(doc)
+            if doc.solar_material_ordered and doc.electrical_material_ordered_aggrey:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Pre Install Work'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Pre Install Work,Installation Work','custom_project_stage':'Pre Install Work'})
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.custom_assigned_group="Project Managers"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Project Managers"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                            assign(doc,group,doc_name)
+                        tsn.save()
+                        break;
+                        
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Installation Work'},fields=['*'])
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.custom_assigned_group="Project Managers"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Project Managers"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+        
+        
+
+    if doc.subject.lower() == "pre install work":
+        set_customer(doc)
+        # if (doc.schedule_pre_install_works and doc.pre_install_work_completeds) or doc.custom_pre_installed_not_required:
+        #     if doc.schedule_pre_install_works or doc.pre_install_work_completeds and doc.custom_pre_installed_not_required:
+        #         doc.db_set('project_status', 'In Progress')
+        #         frappe.throw("Either you should complete sub task or not required pre install.")
+        if doc.schedule_pre_install_works and doc.pre_install_work_completeds and not doc.custom_pre_installed_not_required:
+            doc.db_set('project_status', 'Completed')
+            update_multiple_custom_stage(doc.project,'Pre Install Work')
+        elif doc.custom_pre_installed_not_required and not doc.schedule_pre_install_works and not doc.pre_install_work_completeds:
+            doc.db_set('project_status', 'Completed')
+            update_multiple_custom_stage(doc.project,'Pre Install Work')
+        else:
+            if doc.project_status=='Completed':
+                frappe.throw('Task Status Should not be Completed !')
+                
+            # if doc.schedule_pre_install_works and doc.pre_install_work_completeds:
+            #     pass
+            
+            # else:
+            #     if doc.project_status=="Completed":
+            #         frappe.throw('Task Status Should not be Completed !')
+                    
+            
+    if doc.subject.lower() == "installation work":
+            set_customer(doc)
+            if doc.installer_commissioning_performed and doc.schedule_installs and doc.solar_install_completed and doc.install_review_completed:
+                update_multiple_custom_stage(doc.project,'Installation Work')
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Commissioning'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Commissioning','custom_project_stage':'Commissioning'})
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.custom_assigned_group="Design Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Design Team"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+            
+    if doc.subject.lower() == "commissioning":
+            set_customer(doc)
+            if doc.erray_layout_created_as_part_of_commissioning and doc.barcodes_scanned:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'ELECTRICAL INSPECTION'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Electrical Inspection,Structural Inspection','custom_project_stage':'Electrical Inspection'})
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
+                        tsn.custom_assigned_group="Project Managers"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Project Managers"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+                        
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Structural Inspection'},fields=['*'])
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
+                        tsn.custom_assigned_group="Project Managers"
+                        group="Project Managers"
+                        doc_name=nm.name
+                        status_changed = doc.has_value_changed("project_status")
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+        
+    if doc.subject.lower() == "structural inspection":
+            set_customer(doc)
+            if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+            if doc.project_status=="Completed":
+                electrical_inspection=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Electrical Inspection'},fields=['*'])
+                for si in electrical_inspection:
+                    if si.project_status=='Completed':
+                        ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Final submitted'},fields=['*'])
+                        for nm in ts:
+                            tsn=frappe.get_doc('Task',nm.name)
+                            tsn.started_on = doc.completed_on
+                            tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
+                            tsn.custom_assigned_group="Permitting Team"
+                            group="Permitting Team"
+                            doc_name=nm.name
+                            status_changed = doc.has_value_changed("project_status")
+                            if status_changed:
+                                tsn.project_status="In Progress"
+                                assign(doc,group,doc_name)
+                            # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                            tsn.save()
+                            break;
+                    
+                    
+    if doc.subject.lower() == "electrical inspection":
+            set_customer(doc)
+            if doc.electrical_inspection_scheduled and doc.electrical_inspection_approved:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+                    
+        # if doc.started_on and doc.expected_close_date:
+            if doc.project_status=="Completed":
+                update_multiple_custom_stage(doc.project,'Electrical Inspection')
+                if doc.completed_on:
+                    ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'PTO'},fields=['*'])
+                    set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Structural Inspection,PTO','custom_project_stage':'PTO'})
+                    for nm in ts:
+                        tsn=frappe.get_doc('Task',nm.name)
+                        tsn.started_on = doc.completed_on
+                        tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
+                        tsn.custom_assigned_group="Interconnection Team"
+                        status_changed = doc.has_value_changed("project_status")
+                        group="Interconnection Team"
+                        doc_name=nm.name
+                        if status_changed:
+                            tsn.project_status="In Progress"
+                            assign(doc,group,doc_name)
+                        # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                        tsn.save()
+                        break;
+                structural_inspection=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Structural Inspection'},fields=['*'])
+                for si in structural_inspection:
+                    if si.project_status=='Completed':
+                        ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Final submitted'},fields=['*'])
+                        for nm in ts:
+                            tsn=frappe.get_doc('Task',nm.name)
+                            tsn.started_on = doc.completed_on
+                            tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
+                            tsn.custom_assigned_group="Permitting Team"
+                            group="Permitting Team"
+                            doc_name=nm.name
+                            status_changed = doc.has_value_changed("project_status")
+                            if status_changed:
+                                tsn.project_status="In Progress"
+                                assign(doc,group,doc_name)
+                            # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+                            tsn.save()
+                            break;
+                        
+    # if doc.subject.lower() == "pto":
+    #     # if doc.started_on and doc.expected_close_date:
+    #         if doc.project_status=="Completed":
+    #             if doc.completed_on:
+    #                 ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'ELECTRICAL PERMIT'},fields=['*'])
+    #                 for nm in ts:
+    #                     tsn=frappe.get_doc('Task',nm.name)
+    #                     tsn.started_on = doc.completed_on
+    #                     tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
+    #                     # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
+    #                     tsn.save()
+    #                     break;
+                        
+                        
+                        
+                        
+        # else:
+        #     frappe.throw("Please Complete Previous Tasks.")
+            
+    if doc.subject.lower() == "pto":
+            set_customer(doc)
+            if doc.pto_submitted and doc.pto_approved:
+                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Final Submitted','custom_project_stage':'Final Submitted'})
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+    
+    if doc.subject.lower() == "interconnection":
+            set_customer(doc)
+            if doc.submitted_for_interconnection and doc.interconnection_received:
+                if doc.project_status=="Completed":
+                    update_multiple_custom_stage(doc.project,'Interconnection')
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+
+    if doc.subject.lower() == "installation work":
+            set_customer(doc)
+            if doc.installer_commissioning_performed and doc.schedule_installs and doc.solar_install_completed and doc.install_review_completed:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+                    
+    if doc.subject.lower() == "structural inspection":
+            set_customer(doc)
+            if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
+                update_multiple_custom_stage(doc.project,'Structural Inspection')
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+
+    if doc.subject.lower() == "final submitted":
+            set_customer(doc)
+            if doc.final_signed_off_submitted and doc.final_off_received:
+                pass
+            else:
+                if doc.project_status=="Completed":
+                    frappe.throw('Task Status Should not be Completed !')
+            if doc.project_status=="Completed":
+                cur_date=frappe.utils.getdate()
+                completed_by=frappe.db.get_value('User',frappe.session.user,'full_name')
+                frappe.db.set_value('Project',doc.project,{'project_status':'Completed','custom_actual_close_date':cur_date})
+                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Final Submitted','custom_project_stage':'Final Submitted'})
+                    
+    # ------------------------------create events for task on schedule on -------------------------------------
+
+    subjects_to_check = [
+        'Site Visit',
+        'procurements',
+        'Pre Install Work',
+        'Installation Work',
+        'Electrical Inspection',
+        'Structural Inspection'
+    ]
+
+    if doc.custom_scheduled_on:
+        for subject in subjects_to_check:
+            if doc.subject == subject:
+                schedule_task=subject
+                date_changed = doc.has_value_changed("custom_scheduled_on")
+                if date_changed:
+                    cur_date = doc.custom_scheduled_on
+                    formatted_date = frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
+                    create_event_with_participants(doc, cur_date, formatted_date,schedule_task)
+                    break  # If you only want to process the first matching condition
+
+    
+
+    
+
+# ------------before save event------------
+def before_save(doc,Method=None):
+    if doc.custom_customer_name:
+        doc.custom_task_title = doc.subject + "\n" + doc.custom_customer_name
+
+# ------------------before validate event-----------
+def before_validate(doc,method=None):
+    doc.db_set("custom_task_priority",doc.task_priority)
+    if doc.project_status=='Completed':
+        name=frappe.db.get_value('User',frappe.session.user,'full_name')
+        doc.db_set('completed_by',frappe.session.user)
+        doc.db_set('custom_name_completed_by',name)
+        # frappe.throw(f"{frappe.utils.getdate()}")
+        doc.db_set('completed_on',frappe.utils.getdate())
+
+    
+# ----------------after_insert event-------------\
+def after_insert(doc,Method=None):
     if doc.subject.lower() == "welcome call":
         doc.db_set("custom_assigned_group","Customer Success")
         group="Customer Success"
@@ -172,542 +734,17 @@ def require_a_call(doc,method=None):
                 receiver.append(i.user)
                 html_ccontent=f'''<p>Hello,</p>
                             <h3>Customer Success Team,</h3>
-                            A new project won and requires a welcome call. Here is the link to the project:<a href="https://myerp.solarblocks.us/app/project/{doc_name}">{doc_name}</a>'''
+                            A new project won and requires a welcome call. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc_name}">{doc.custom_customer_name}</a>'''
                 frappe.sendmail(recipients=receiver,message=html_ccontent,subject="Requires a welcome call")
                 # frappe.msgprint(f"Email sent for Welcome call")
                     
-def task_before_save(doc,method=None):
-    def assign(doc,group,doc_name):
-        user_group=frappe.db.get_all("User Group Member",filters={'parent':group},fields={'*'})
-        for i in user_group:
-            todo = frappe.new_doc('ToDo')
-            todo.allocated_to = i.user
-            todo.reference_type = "Task"
-            todo.reference_name = doc_name
-            todo.description = "Assign"
-            todo.insert(ignore_permissions=True)
-            
-            share = frappe.new_doc('DocShare')
-            share.user = i.user
-            share.share_doctype = "Task"
-            share.share_name = doc_name
-            share.read = 1
-            share.write=1
-            share.notify_by_email=1
-            share.insert(ignore_permissions=True) 
-
-    if doc.subject.lower() == "welcome call":
-        # # if doc.get("__islocal"):
-        # frappe.msgprint(f"{doc.project_status}")
-        if doc.project_status=='Completed':
-            doc.db_set("project_status", "Completed")
-        # elif doc.project_status=='Not Started':
-        #     doc.db_set("project_status", "Not Started")
-        # elif doc.project_status=='On Hold':
-        #     doc.db_set("project_status", "On Hold")
-        # elif doc.project_status=='Cancelled':
-        #     doc.db_set("project_status", "Cancelled")
-    else:
-        doc.db_set("project_status", "In Progress")
-        # doc.db_set("custom_assigned_group","Customer Success")
-        # group="Customer Success"
-        # doc_name=doc.name
-        # assign(doc,group,doc_name)
-        # Check if the document is being saved for the first time
-        # frappe.msgprint("Document is not new.")
-        # # Document is not new, so we can change the project status if needed
-        # if doc.project_status != 'Completed' and doc.project_status != 'Cancelled' \
-        #         and doc.project_status != 'Not Started' and doc.project_status != 'On Hold':
-        #     doc.db_set("project_status", "In Progress")
-        #     frappe.msgprint("Project status updated to 'In Progress'.")
-        # else:
-        #     frappe.msgprint("Project status remains unchanged.")
-    # else:
-    #     frappe.msgprint("Document is new.")
-    #     # Document is new, so set the project status to "In Progress"
-    #     doc.db_set("project_status", "In Progress")
-    #     frappe.msgprint("Project status set to 'In Progress'.")
-
-
-    if doc.briefed_about_contract_add_ons_ and doc.discuss_any_adds_on and doc.all_documents_collected_:        
-        pass
-    else:        
-        if doc.project_status=="Completed":            
-            frappe.throw('Task Status Should not be Completed !')
-                
-    if doc.project_status=="Completed":
-        if doc.completed_on:
-            ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Site Visit'},fields=['*'])
-            set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Site Visit'})
-            for nm in ts:
-                tsn=frappe.get_doc('Task',nm.name)
-                tsn.started_on = doc.completed_on
-                tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
-                tsn.custom_assigned_group="Project Managers"
-                # assign_task(doc,"Project Managers")
-                tsn.custom_assigned_group="Project Managers"
-                tsn.project_status="In Progress"
-                group="Project Managers"
-                doc_name=nm.name
-                assign(doc,group,doc_name)
-                # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                tsn.save()
-                break;        
-    
-    if doc.subject.lower() == "site visit":
-        if doc.site_visit_scheduled and doc.site_visit_completed and doc.pre_install_review_completed:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-            
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Engineering'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Engineering'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 4)
-                    tsn.custom_assigned_group="Design Team"
-                    tsn.project_status="In Progress"
-                    group="Design Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.")
-
-    if doc.subject.lower() == "engineering":
-        if doc.complete_design_package and doc.pe_letter and doc.bom:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Interconnection'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Interconnection'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
-                    tsn.custom_assigned_group="Interconnection Team"
-                    tsn.project_status="In Progress"
-                    group="Interconnection Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                    
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'STRUCTURAL PERMITTING'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Permitting Team"
-                    tsn.project_status="In Progress"
-                    group="Permitting Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                #section modify electrical permit   
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Electrical Permit'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Permitting Team"
-                    tsn.project_status="In Progress"
-                    group="Permitting Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.") 
-    
-    if doc.subject.lower() == "engineering":
-        if doc.complete_design_package and doc.pe_letter and doc.bom:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Interconnection'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Interconnection'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
-                    tsn.custom_assigned_group="Interconnection Team"
-                    tsn.project_status="In Progress"
-                    group="Interconnection Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                    
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'STRUCTURAL PERMITTING'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Permitting Team"
-                    tsn.project_status="In Progress"
-                    group="Permitting Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                #section modify electrical permit   
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Electrical Permit'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Permitting Team"
-                    tsn.project_status="In Progress"
-                    group="Permitting Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.") 
-    
-    if doc.subject.lower() == "structural permitting":
-        if doc.submitted_for_permits and doc.permits_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-    
-    if doc.subject.lower() == "electrical permit":
-        if doc.submitted_for_permits and doc.permits_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-            
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Procurements'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Procurements'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 4)
-                    tsn.custom_assigned_group="Procurement Team"
-                    tsn.project_status="In Progress"
-                    group="Procurement Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.")
-    
-    if doc.subject.lower() == "procurements":
-        if doc.solar_material_ordered and doc.electrical_material_ordered_aggrey:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Pre Install Work'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Pre Install Work'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.custom_assigned_group="Project Managers"
-                    tsn.project_status="In Progress"
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    group="Project Managers"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    tsn.save()
-                    break;
-                    
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Installation Work'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.custom_assigned_group="Project Managers"
-                    tsn.project_status="In Progress"
-                    group="Project Managers"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.")
-    
-    if doc.subject.lower() == "pre install work":
-        if doc.schedule_pre_install_works and doc.pre_install_work_completeds:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-
-    if doc.subject.lower() == "installation work":
-        if doc.installer_commissioning_performed and doc.schedule_installs and doc.solar_install_completed and doc.install_review_completed:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Commissioning'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'Commissioning'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.custom_assigned_group="Design Team"
-                    tsn.project_status="In Progress"
-                    group="Design Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.")
-    
-    if doc.subject.lower() == "commissioning":
-        if doc.erray_layout_created_as_part_of_commissioning and doc.barcodes_scanned:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'ELECTRICAL INSPECTION'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'ELECTRICAL INSPECTION'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Project Managers"
-                    tsn.project_status="In Progress"
-                    group="Project Managers"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                    
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Structural Inspection'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-                    tsn.custom_assigned_group="Project Managers"
-                    tsn.project_status="In Progress"
-                    group="Project Managers"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-        # else:
-        #     frappe.throw("Please Complete Previous Tasks.")
-    
-    if doc.subject.lower() == "electrical inspection":
-        if doc.electrical_inspection_scheduled and doc.electrical_inspection_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-    
-    if doc.subject.lower() == "structural inspection":
-        if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-                
-    # if doc.started_on and doc.expected_close_date:
-        if doc.project_status=="Completed":
-            if doc.completed_on:
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'PTO'},fields=['*'])
-                set_custom_stage_in_project=frappe.db.set_value('Project',doc.project,{'custom_stage':'PTO'})
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
-                    tsn.custom_assigned_group="Interconnection Team"
-                    tsn.project_status="In Progress"
-                    group="Interconnection Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-                    
-                ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Final submitted'},fields=['*'])
-                for nm in ts:
-                    tsn=frappe.get_doc('Task',nm.name)
-                    tsn.started_on = doc.completed_on
-                    tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 7)
-                    tsn.custom_assigned_group="Permitting Team"
-                    tsn.project_status="In Progress"
-                    group="Permitting Team"
-                    doc_name=nm.name
-                    assign(doc,group,doc_name)
-                    # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-                    tsn.save()
-                    break;
-    # if doc.subject.lower() == "pto":
-#     # if doc.started_on and doc.expected_close_date:
-#         if doc.project_status=="Completed":
-#             if doc.completed_on:
-#                 ts=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'ELECTRICAL PERMIT'},fields=['*'])
-#                 for nm in ts:
-#                     tsn=frappe.get_doc('Task',nm.name)
-#                     tsn.started_on = doc.completed_on
-#                     tsn.expected_close_date = frappe.utils.add_days(tsn.started_on, 14)
-#                     # tsn.scheduled_on = frappe.utils.add_days(tsn.started_on, 2)
-#                     tsn.save()
-#                     break;
-                    
-                    
-                    
-                    
-    # else:
-    #     frappe.throw("Please Complete Previous Tasks.")
-
-    if doc.subject.lower() == "pto":
-        if doc.pto_submitted and doc.pto_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-    
-    if doc.subject.lower() == "interconnection":
-        if doc.submitted_for_interconnection and doc.interconnection_received:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-
-    if doc.subject.lower() == "installation work":
-        if doc.installer_commissioning_performed and doc.schedule_installs and doc.solar_install_completed and doc.install_review_completed:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-
-    if doc.subject.lower() == "structural inspection":
-        if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-    
-    if doc.subject.lower() == "final submitted":
-        if doc.final_signed_off_submitted and doc.final_off_received:
-            pass
-        else:
-            if doc.project_status=="Completed":
-                frappe.throw('Task Status Should not be Completed !')
-        if doc.project_status=="Completed":
-            cur_date=frappe.utils.getdate()
-            frappe.db.set_value('Project',doc.project,{'project_status':'Completed','custom_actual_close_date':cur_date})
-    
-    def get_project_stage(doc):
-        res = frappe.db.sql("""SELECT subject from `tabTask` 
-                    WHERE project = %(p_name)s and project_status = "In Progress" 
-                    ORDER BY task_priority
-                    LIMIT 1
-                    """,({"p_name":doc.project}))[0][0]
-        return res
-    
-    # if doc.project:
-    #     if doc.project_status == "In Progress":
-    #         stage = get_project_stage(doc)
-    #         frappe.db.set_value("Project",doc.project,"custom_stage",stage) 
-    #     if doc.project_status == "Completed":
-    #         # status update,
-    #         next_pr = doc.custom_task_priority + 1
-    #         query = f""" SELECT name from `tabTask`  
-    #                 WHERE project = '{doc.project}' and project_status = "Not Started" and custom_task_priority = {next_pr}
-    #                 ORDER BY custom_task_priority;
-    #             """
-    #         names = frappe.db.sql(query)
-    #         frappe.msgprint(f"{names}")
-    #         for name in names:
-    #             frappe.db.set_value("Task", name[0], "project_status", "In Progress")
-    #         stage = get_project_stage(doc)
-    #         frappe.db.set_value("Project",doc.project,"custom_stage",stage) 
-
-    # custom_stage=frappe.db.get_value('Project',doc.project, 'custom_stage')
-    # if custom_stage==doc.subject:
-    #     doc.db_set("project_status","In Progress")
-
-def assign_task(doc,method=None):
-    if doc.project_status=='Completed':
-        user_group=frappe.db.get_all("User Group Member",filters={'parent':doc.custom_assigned_group},fields={'*'})
-        for i in user_group:
-            todo = frappe.new_doc('ToDo')
-            todo.allocated_to = i.user
-            todo.reference_type = "Task"
-            todo.reference_name = doc.name
-            todo.description = "Assign"
-            todo.insert(ignore_permissions=True)
-            
-            share = frappe.new_doc('DocShare')
-            share.user = i.user
-            share.share_doctype = "Task"
-            share.share_name = doc.name
-            share.read = 1
-            share.write=1
-            share.notify_by_email=1
-            share.insert(ignore_permissions=True)
-            
-            
-        #     for i in user_group:
-        #         row = doc.append("task_user", {
-        #     	"user":i.user,
-        #     	"email":i.user
-        #     })
-        # doc.save()
-
-def set_task_priority(doc,method=None):
-    doc.db_set("custom_task_priority",doc.task_priority)
-
-def task_dates_update(doc, method=None):
+# ---------------before insert event---------------
+def before_insert(doc,method=None):
     if doc.subject.lower() == "welcome call":
         doc.started_on = frappe.utils.nowdate()
         doc.expected_close_date = frappe.utils.add_days(doc.started_on, 2)
         doc.scheduled_on = frappe.utils.add_days(doc.started_on, 2)
+    
+    
+	
+    
