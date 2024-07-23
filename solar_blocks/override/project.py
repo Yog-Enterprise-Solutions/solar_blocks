@@ -1,8 +1,42 @@
 import frappe
+from solar_blocks.override.lead import assign_permissions
 
-def project_as(doc,method=None):
-    # frappe.throw(f"validate")
-    # frappe.throw(f"validate")
+
+def safe_float_conversion(value):
+    try:
+        return float(value.replace(',', ''))
+    except (ValueError, AttributeError):
+        return 0.0  # or any default value you prefer
+
+
+# ------------------set user permissin after save on assign team field
+def after_save(doc,method=None):
+    #set user permission for assign team
+    if doc.has_value_changed("custom_assign_team"):
+        assign_permissions(doc,'Project')
+
+
+
+
+
+def before_save(doc,method=None):
+    # ----------------------insert or append selling amount child table in profitability section----------
+    doc.custom_selling_amount = []
+    finance = {'Cash Amount': 0, 'Financing Amount': 0, 'Lease Amount': 0}
+
+    if doc.cash_amount:
+        finance['Cash Amount'] = safe_float_conversion(doc.cash_amount)
+    if doc.financing_amount:
+        finance['Financing Amount'] = safe_float_conversion(doc.financing_amount)
+    if doc.lease_amount:
+        finance['Lease Amount'] = safe_float_conversion(doc.lease_amount)
+
+    for key, value in finance.items():
+        doc.append('custom_selling_amount', {
+            'service_name': key,
+            'total': value
+        })
+#-----------------set timeline in ticket
     if doc.get("task_details"):
         for oc in doc.get("task_details"):
             oc.scheduled_close=frappe.utils.add_days(oc.started_on, 2)
@@ -28,11 +62,7 @@ def project_as(doc,method=None):
             if oc.assigned_to_individual:
                 child_row = doc.append("notify_users", {})
                 child_row.notifyto = str(oc.assigned_to_individual)
-
-
-
-
-    if doc.task_details:
+#---------------------send mails on ticket
         doc_name=doc.name
         receiver=[]
         for i in doc.task_details:
@@ -47,9 +77,10 @@ def project_as(doc,method=None):
                         created_by=i.created_by
                         html_ccontent=f'''Hi, <br>
                                     Your Ticket has been worked upon and Completed:<br>
-                                    Link: <a href="https://myerp.solarblocks.us/app/project/{doc_name}">{doc_name}</a> <br>
+                                    Link: <a href="https://erp.solarblocks.us/app/project/{doc_name}">{doc_name}</a> <br>
                                     Notes: {notes}'''
-                        receiver.append(frappe.db.get_value('User',{'first_name':created_by},'email'))
+                        # receiver.append(frappe.db.get_value('User',{'first_name':created_by},'email'))
+                        receiver.append(created_by)
                         if receiver:
                             frappe.sendmail(recipients=receiver,message=html_ccontent,subject="Ticket Completed")
                             frappe.msgprint(f"Email sent for ticket completed")
@@ -61,7 +92,7 @@ def project_as(doc,method=None):
                     notes=i.notes
                     html_ccontent=f'''Hi, <br>
                                     You have been assigned the following ticket:<br>
-                                    Link: <a href="https://myerp.solarblocks.us/app/project/{doc_name}">{doc_name}</a> <br>
+                                    Link: <a href="https://erp.solarblocks.us/app/project/{doc_name}">{doc_name}</a> <br>
                                     Notes: {notes}'''
                     if cur_date==started_on:
                         i.is_notified=1
@@ -76,82 +107,81 @@ def project_as(doc,method=None):
                             for i in user_group:
                                 receiver.append(i.user)
                     if receiver:
-                        
                         frappe.sendmail(recipients=receiver,message=html_ccontent,subject="Ticket Created")
                         frappe.msgprint(f"Email sent for assigned ticket")
                         receiver=[]
-                            
 
-def update_auto_number_in_task_for_priority(doc, method=None):    
-    proj_template=frappe.db.get_all("Project Template Task",filters={'parent':doc.project_template},fields={'*'})
-    for i in proj_template:
-        task=frappe.db.get_all("Task",filters={'project':doc.name,'subject':i.subject},fields={'*'})
-        # frappe.msgprint("jjjj")
-        if len(task)>0: 
-            get_task_doc=frappe.get_doc("Task",task[0]['name'])
-            get_task_doc.task_priority=i.idx
-            get_task_doc.save()
 
-def project_bs(doc, method=None):
 
+def after_insert(doc,method=None):
     if str(doc.expected_start_date)=="None":
         doc.expected_start_date=frappe.utils.nowdate()
         doc.expected_end_date=frappe.utils.add_months(doc.expected_start_date, 2)
-        
-        
+    
+
+    proj_template=frappe.db.get_all("Project Template Task",filters={'parent':doc.project_template},fields={'*'})
+    for i in proj_template:
+        task=frappe.db.get_all("Task",filters={'project':doc.name,'subject':i.subject},fields={'*'})
+        if len(task)>0: 
+            get_task_doc=frappe.get_doc("Task",task[0]['name'])
+            get_task_doc.task_priority=i.idx
+            get_task_doc.custom_customer_name=doc.project_name
+            get_task_doc.save()
+    # -------------------create bom after project insert---------------------
+    # # Initialize totals for each group
+    totals = {
+        'SOLAR ITEMS': 0,
+        'ELECTRICAL': 0,
+        'IRONRIDGE SKIRTS': 0,
+        'ROOF TECH PITCHED ROOF ATTACHMENTS': 0,
+        'UNIRAC FLAT ROOF': 0,
+        'IRONRIDGE PITCHED ROOF': 0,
+        'IRONRIDGE FLAT ROOF': 0,
+        'CONDUITS AND ACCESORIES (METTALIC)': 0,
+        'WIRES/CABLES': 0,
+        'APPROVALS/FEES': 0,
+        'MANPOWER': 0
+    }
+    list_opp = frappe.db.get_list('Item')
+    bos = frappe.new_doc('BOS')
+    bos.project_name=doc.project_name
+    bos.project=doc.name
+    for key,value in totals.items():
+        bos.append('totals_of__services',{'service_name':key,'total':value})
+
+
+    group_to_field_map = {
+        'SOLAR ITEMS': 'solar_items',
+        'ELECTRICAL': 'electrical',
+        'IRONRIDGE SKIRTS': 'ironridge_skirts',
+        'ROOF TECH PITCHED ROOF ATTACHMENTS': 'roof_tech_pitched_roof_attachments',
+        'UNIRAC FLAT ROOF': 'unirac_flat_roof',
+        'IRONRIDGE PITCHED ROOF': 'ironridge_pitched_roof',
+        'IRONRIDGE FLAT ROOF': 'ironridge_flat_roof',
+        'CONDUITS AND ACCESORIES (METTALIC)': 'conduits_and_accesories_mettalic',
+        'WIRES/CABLES': 'wires_cables',
+        'APPROVALS/FEES': 'approvals_fees',
+        'MANPOWER': 'manpower'
+    }
+
+    for i in list_opp:
+        item = frappe.get_doc('Item', i['name'])
+        field_name = group_to_field_map.get(item.custom_bos_item_group)
+        if field_name:
+            # amount = item.custom_test * item.valuation_rate
+            bos.append(field_name, {
+                'item_code': item.name,
+                'uom': item.stock_uom,
+                'rate': item.valuation_rate
+                # 'amount': amount
+            })
         
 
-        
-    # if not doc.get("task_details"):
-    #     opportunity = frappe.get_doc('Opportunity', doc.opportunity)
+    bos.insert()
 
-    #     for oc in opportunity.get("task_details"):	
-    #     	child_row = doc.append("task_details", {})
-    #     	child_row.assigned_to_team = oc.assigned_to_team
-    #     	child_row.task_status = oc.task_status
-    #     	child_row.assign_date = oc.assign_date
-    #     	child_row.completion_date = oc.completion_date
-    #     	child_row.notes=oc.notes
-    #     	child_row.attachment=oc.attachment
+                        
+                    
+                    
 
 
-    # if task_details_opportunity:
-    #     if not doc.get('task_details'):
-    #         doc.set('task_details', [])
 
-    #     for task_detail in task_details_opportunity:
-        
-    #         doc.append('task_details', task_detail)
-
-def assign_project_for_require_welcome_call(doc,method=None):
-    frappe.throw(f"yesss")
-    user_group=frappe.db.get_all("User Group Member",filters={'parent':doc.assign_to_user_group},fields={'*'})
-
-    for i in user_group:
-        todo = frappe.new_doc('ToDo')
-        todo.allocated_to = i.user
-        todo.reference_type = "Task"
-        todo.reference_name = doc.name
-        todo.description = "Assign"
-        frappe.throw("yha")
-        todo.insert(ignore_permissions=True)
-        frappe.throw("bha")
-        
-        share = frappe.new_doc('DocShare')
-        share.user = i.user
-        share.share_doctype = "Task"
-        share.share_name = doc.name
-        share.read = 1
-        share.write=1
-        share.notify_by_email=1
-        share.insert(ignore_permissions=True)
-            
-            
-        #     for i in user_group:
-        #         row = doc.append("task_user", {
-        #     	"user":i.user,
-        #     	"email":i.user
-        #     })
-        # doc.save()
-        
-                

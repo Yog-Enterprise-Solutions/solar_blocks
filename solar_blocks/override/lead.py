@@ -1,6 +1,7 @@
+import frappe
+
+
 def create_event_with_participants(doc,subject,date):
-    # if doc.lead_sub_status!='Convert to Opportunity':
-    # frappe.msgprint(f"yessss")
     exist_event = frappe.db.exists("Event",{'subject':subject}, {"name": ("in", frappe.get_all("Event Participants", filters={"email":doc.email}, pluck="parent"))})
     # if exist_event:
     #     frappe.msgprint(f"existl")
@@ -21,25 +22,111 @@ def create_event_with_participants(doc,subject,date):
         event.save()
 
 
+def assign_permissions(doc,doctype_name):
+    if not doc.custom_assign_team:
+        return
 
-if doc.lead_sub_status=='Appointment Setup' and not doc.custom_appointment_status:
-    # frappe.msgprint(f"nahi")
-    cur_date=doc.custom_call_date_and_time
-    formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
-    subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - Your Appointment is set for {formatted_date}"
-    create_event_with_participants(doc,subject,cur_date)
+    team_doc = frappe.get_doc("Team",doc.custom_assign_team)
+
+    if not team_doc:
+        frappe.throw(f"Team {team} not found")
+
+    for user_role in team_doc.user_and_role:
+        user = user_role.user
+        if not user:
+            continue
+
+        # Check if the permission already exists
+        if not frappe.db.exists("User Permission", {"user": user, "allow": doctype_name, "for_value": doc.name}):
+            # Create user permission for this user
+            user_permission = frappe.new_doc("User Permission")
+            user_permission.user = user
+            user_permission.allow = doctype_name
+            user_permission.for_value = doc.name
+            user_permission.insert(ignore_permissions=True)
+
+            frappe.msgprint(f"User Permission created for user {user} on {doctype_name} {doc.name}")
+
+
+def create_document_template(doc):
+    #create document template
+    list_of_documents = [
+
+        "IC Letter",
+        "PTO Letter",
+        "DOB Approved Plans",
+        "Structural Pass Certificate",
+        "DOB Work Permit",
+        "Electrical Pass Certificate",
+        "Electrical Work Permit",
+        "Signed Contract",
+        "ACP5",
+        "Property Survey",
+        "Property Deed / Property Tax",
+        "Utility Bill",
+        "Planset",
+        "Electrical Plans",
+        "PE Letter",
+        "PIL Letter",
+        "Shade Report",
+        "Asbuilt Planset",
+        "Asbuilt Electrical Plan"
+    ]
+    for i in list_of_documents:
+        doc.append("custom_document_attachments", 
+        {'name1':i})
+    for j in ["Proposal 1","Proposal 2","Proposal 3"]:
+        doc.append("custom_proposals", 
+        {'name1':j})
+
+
+def after_save(doc,method=None):
+    if doc.lead_sub_status=='Appointment Setup' and not doc.custom_appointment_status:
+        # frappe.msgprint(f"nahi")
+        cur_date=doc.custom_call_date_and_time
+        formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
+        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - Your Appointment is set for {formatted_date}"
+        create_event_with_participants(doc,subject,cur_date)
+        
+    if doc.custom_appointment_status=='Rescheduled':
+        date=doc.custom_call_date_and_time
+        formatted_date=frappe.utils.format_datetime(date, "MMMM dd yyyy")
+        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - appointment is rescheduled for {formatted_date}"
+        create_event_with_participants(doc,subject,date)
+    if doc.lead_sub_status=='Call at later Date':
+        cur_date=doc.reminder_date1
+        subject=f"Reminder to call {doc.first_name} {doc.last_name} at {doc.street}."
+        create_event_with_participants(doc,subject,cur_date)
+
+    #set user permissin for team
+    if doc.has_value_changed("custom_assign_team"):
+        assign_permissions(doc,'Lead')
+
+
+def enqueue_create_document_template(doc, method):
+    frappe.enqueue(create_document_template,queue="long", doc=doc)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
     
-if doc.custom_appointment_status=='Rescheduled':
-    date=doc.custom_call_date_and_time
-    formatted_date=frappe.utils.format_datetime(date, "MMMM dd yyyy")
-    subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - appointment is rescheduled for {formatted_date}"
-    create_event_with_participants(doc,subject,date)
-if doc.lead_sub_status=='Call at later Date':
-    cur_date=doc.reminder_date1
-    subject=f"Reminder to call {doc.first_name} {doc.last_name} at {doc.street}."
-    create_event_with_participants(doc,subject,cur_date)
-    
-    
+
+
+
+
+
+
     
 
     

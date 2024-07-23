@@ -135,6 +135,20 @@ override_doctype_class = {
 # Hook on document methods and events
 
 doc_events = {
+
+    'Team':{
+        'validate':'solar_blocks.solar_blocks.doctype.team.team.assign_roles_to_users'
+        },
+    "Lead": {
+        "on_update" : "solar_blocks.override.lead.after_save",
+        "before_insert" : "solar_blocks.override.lead.enqueue_create_document_template"
+    },
+    "Opportunity":{
+        "on_update": "solar_blocks.override.opportunity.enqueue_todo_and_share_on_maxfit_completed",
+        "after_insert": "solar_blocks.override.opportunity.enqueue_todo_and_share",
+        "before_insert": "solar_blocks.override.opportunity.set_user_group_and_document_status_template_before_insert",
+        "validate": "solar_blocks.override.opportunity.assign_users_and_send_mails"
+    },
 # 	"Task": {
 #         # will run before a ToDo record is inserted into database
 #         "after_insert": "solar_blocks.override.task.require_a_call",
@@ -143,22 +157,13 @@ doc_events = {
 #         "before_insert": "solar_blocks.override.task.task_dates_update"
 #         # "before_validate": "solar_blocks.solar_blocks.override.task.assign_task"
 #     },
-#     "Project":{
-#         "before_save": "solar_blocks.override.project.project_as",
-#         "after_save": "solar_blocks.override.project.update_auto_number_in_task_for_priority",
-#         "after_insert": "solar_blocks.override.project.project_bs"
-#         # "before_validate": "solar_blocks.solar_blocks.override.project.assign_project_for_require_welcome_call"
-#     },
-    # "Lead": {
-    #     "on_update" : "solar_blocks.override.lead.create_event_for_lead"
-    # },
-    "Opportunity":{
-        "on_update": "solar_blocks.override.opportunity.enqueue_todo_and_share_on_maxfit_completed",
-        "after_insert": "solar_blocks.override.opportunity.enqueue_todo_and_share",
-#         "before_insert": "solar_blocks.override.opportunity.set_user_group_before_insert",
-#         "before_validate": "solar_blocks.override.opportunity.add_task_users_in_opportunity",
-#         "before_save": "solar_blocks.override.opportunity.notify_opportunity",
+    "Project":{
+        "on_update": "solar_blocks.override.project.after_save",
+        "validate": "solar_blocks.override.project.before_save",
+        "after_insert": "solar_blocks.override.project.after_insert"
     },
+   
+   
 #     "Error Log": {
 #         "before_insert": "solar_blocks.override.error_log.error_log_fix"
 #     },
