@@ -44,8 +44,17 @@ def assign_permissions(doc,doctype_name):
             user_permission.allow = doctype_name
             user_permission.for_value = doc.name
             user_permission.insert(ignore_permissions=True)
-
             frappe.msgprint(f"User Permission created for user {user} on {doctype_name} {doc.name}")
+        if not frappe.db.exists('DocShare',{'user':user,'share_name':doc.name}):
+            share = frappe.new_doc('DocShare')
+            share.user =user
+            share.share_doctype =doctype_name
+            share.share_name =doc.name
+            share.read = 1
+            share.write = 1
+            share.notify_by_email = 1
+            share.insert(ignore_permissions=True)
+        
 
 
 def create_document_template(doc):
