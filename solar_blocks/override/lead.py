@@ -10,12 +10,22 @@ def create_event_with_participants(doc,subject,date):
         event.subject = subject  
         event.starts_on = date
         event.sync_with_google_calendar = 1
+        user_group_emails=[]
+        assign_team_emails=[]
         # event.ends_on=frappe.utils.get_datetime('05-15-2024 03:00:21')
         event.google_calendar = "erp calendar"
         participants = [{"reference_doctype": "Lead", "reference_docname": doc.name, "email": doc.email}]
         user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.assign_user_groups}, fields={'user'})
         for user_group_member in user_group_members:
-            email = user_group_member.user
+            user_group_emails.append(user_group_member.user)
+        if doc.custom_assign_team:
+            assign_team=frappe.get_doc('Team',doc.custom_assign_team)
+            for i in assign_team.user_and_role:
+                assign_team_emails.append(i.user)
+        receivers=[rece for rece in user_group_emails if rece in assign_team_emails]
+        if receivers==[]:
+            receivers=user_group_emails
+        for email in receivers:
             participants.append({"reference_doctype": "Lead", "reference_docname": doc.name, "email": email})
         for participant_data in participants:
             event_participant = event.append('event_participants', participant_data)
