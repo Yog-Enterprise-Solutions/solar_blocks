@@ -83,16 +83,7 @@ def enqueue_todo_and_share(doc, method=None):
             name=doc.name
         )
 
-class CustomOpportunity(Opportunity):
-    def after_insert(self):
-        if self.opportunity_from == "Lead":
-            frappe.get_doc("Lead", self.party_name).db_set('status','Open')
 
-            # link_open_tasks(self.opportunity_from, self.party_name, self)
-            # link_open_events(self.opportunity_from, self.party_name, self)
-            # if frappe.db.get_single_value("CRM Settings", "carry_forward_communication_and_comments"):
-            #     copy_comments(self.opportunity_from, self.party_name, self)
-            #     link_communications(self.opportunity_from, self.party_name, self)
 
 
 #before insert set document status template and user
@@ -231,6 +222,7 @@ def assign_users_and_send_mails(doc,Method=None):
     #on scheduled appointment
     if doc.opportunity_status=='Proposal' or doc.opportunity_status=='Opportunity' or doc.opportunity_status=='Appointment Scheduled':
         if doc.custom_is_proposed==0 and doc.date_and_time_of_appointment!=None:
+            frappe.throw(f"{doc.email}")
             # frappe.throw(f"{doc.date_and_time_of_appointment}")
             cur_date=doc.date_and_time_of_appointment
             formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
@@ -306,6 +298,17 @@ def notify_opportunity(doc,method=None):
 
 
 
+
+class CustomOpportunity(Opportunity):
+    def after_insert(self):
+        if self.opportunity_from == "Lead":
+            frappe.get_doc("Lead", self.party_name).db_set('status','Open')
+
+            # link_open_tasks(self.opportunity_from, self.party_name, self)
+            # link_open_events(self.opportunity_from, self.party_name, self)
+            # if frappe.db.get_single_value("CRM Settings", "carry_forward_communication_and_comments"):
+            #     copy_comments(self.opportunity_from, self.party_name, self)
+            #     link_communications(self.opportunity_from, self.party_name, self)
 
 
 

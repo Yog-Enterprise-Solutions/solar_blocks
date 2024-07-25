@@ -146,8 +146,8 @@ doc_events = {
     "Opportunity":{
         "on_update": "solar_blocks.override.opportunity.enqueue_todo_and_share_on_maxfit_completed",
         "after_insert": "solar_blocks.override.opportunity.enqueue_todo_and_share",
-        "before_insert": "solar_blocks.override.opportunity.set_user_group_and_document_status_template_before_insert",
-        "validate": "solar_blocks.override.opportunity.assign_users_and_send_mails"
+        "before_insert": "solar_blocks.override.opportunity.set_user_group_and_document_status_template_before_insert"
+        # "validate": "solar_blocks.override.opportunity.assign_users_and_send_mails"
     },
 	"Task": {
         "after_insert": "solar_blocks.override.task.after_insert",

@@ -1,13 +1,24 @@
 frappe.ui.form.on('Lead', {
     
 	refresh(frm) {
+        const required_roles = [
+            'Solarblocks Sales Head',
+            'Solarblocks Operations Head',
+            'Solarblocks Management',
+            'Administrator'
+        ];
+        // / Check if the user has any of the required roles
+        const has_required_role = required_roles.some(role => frappe.user.has_role(role));
+
+        // Hide the field if the user does not have any of the required roles
+        if (!has_required_role) {
+            frm.set_df_property('custom_assign_team', 'hidden', 1);
+        }
 	    const relevantRoles = [
             'Sales Field Agent',
             'Sales Closure',
             'Tellecallers',
-            'Sales Head',
-            'Solarblocks Sales Head',
-            'Solarblocks Management'
+            'Sales Head'
         ];
         const hasRelevantRole = relevantRoles.some(role => frappe.user_roles.includes(role));
         const isNotAdmin = !frappe.user_roles.includes('Administrator');

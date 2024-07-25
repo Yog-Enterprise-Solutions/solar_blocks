@@ -31,20 +31,31 @@ def assign_permissions(doc,doctype_name):
     if not team_doc:
         frappe.throw(f"Team {team} not found")
 
+     # Get all share records for the document
+    shares = frappe.get_all('DocShare', filters={
+        'share_doctype': doctype_name,
+        'share_name': doc.name
+    }, fields=['name'])
+
+    # Loop through each share and delete it
+    for share in shares:
+        frappe.delete_doc('DocShare', share['name'])
+
+    #share documnet with user
     for user_role in team_doc.user_and_role:
         user = user_role.user
         if not user:
             continue
 
         # Check if the permission already exists
-        if not frappe.db.exists("User Permission", {"user": user, "allow": doctype_name, "for_value": doc.name}):
-            # Create user permission for this user
-            user_permission = frappe.new_doc("User Permission")
-            user_permission.user = user
-            user_permission.allow = doctype_name
-            user_permission.for_value = doc.name
-            user_permission.insert(ignore_permissions=True)
-            frappe.msgprint(f"User Permission created for user {user} on {doctype_name} {doc.name}")
+        # if not frappe.db.exists("User Permission", {"user": user, "allow": doctype_name, "for_value": doc.name}):
+        #     # Create user permission for this user
+        #     user_permission = frappe.new_doc("User Permission")
+        #     user_permission.user = user
+        #     user_permission.allow = doctype_name
+        #     user_permission.for_value = doc.name
+        #     user_permission.insert(ignore_permissions=True)
+        #     frappe.msgprint(f"User Permission created for user {user} on {doctype_name} {doc.name}")
         if not frappe.db.exists('DocShare',{'user':user,'share_name':doc.name}):
             share = frappe.new_doc('DocShare')
             share.user =user
