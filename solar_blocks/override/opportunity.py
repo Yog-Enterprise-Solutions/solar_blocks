@@ -34,18 +34,45 @@ def enqueue_todo_and_share_on_maxfit_completed(doc, method=None):
     #set user permissin for team
     if doc.has_value_changed("custom_assign_team"):
         assign_permissions(doc,'Opportunity')
-    if doc.opportunity_status=='Maxfit Completed':
-        user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
-        for member in user_group_members:
-            if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):
-                frappe.enqueue(
-                assign_and_share_opportunity_on_maxfit_completed,
-                now=True,
-                # queue='long',
-                job_name='Assign Todo On Maxfit Completed',
-                user_group=doc.custom_assign_user_group,
-                name=doc.name
-            )
+    if doc.has_value_changed("opportunity_status"):
+        if doc.opportunity_status=='Maxfit Completed':
+            user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
+            for member in user_group_members:
+                if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):
+                    frappe.enqueue(
+                    assign_and_share_opportunity_on_maxfit_completed,
+                    now=True,
+                    # queue='long',
+                    job_name='Assign Todo On Maxfit Completed',
+                    user_group=doc.custom_assign_user_group,
+                    name=doc.name
+                )
+
+        # -----------------send mail on maxfit complete status----------------
+
+            teams = frappe.get_all('Team')
+            receipients = set()
+            parent_user=frappe.session.user
+
+            # Iterate through each team
+            for team in teams:
+                team_doc = frappe.get_doc('Team', team.name)
+                # Check the child table for the specified user and 'Sales Closure' role
+                if any(member.user ==parent_user  for member in team_doc.get('user_and_role')):
+                    for member in team_doc.get('user_and_role'):
+                        if member.role == 'Sales Closure':
+                            receipients.add(member.user)
+            # Send email if recipients are found
+            if receipients:
+                subject = 'Opportunity Status Change'
+                message = f'''
+                <p>Hello,</p>
+                <p><strong>Sales Closure,</strong></p>
+                <p>Maxfit design completed. Here is the link to the maxfit design: <a href="https://erp.solarblocks.us/app/opportunity/{doc.name}">{doc.custom_first_name} {doc.custom_last_name}</a></p>
+                '''
+                frappe.sendmail(recipients=list(receipients), message=message, subject=subject)
+
+
 
 
 #assign opportunity on insert -----------------
@@ -71,6 +98,7 @@ def assign_and_share(user_group, name):
         
 
 def enqueue_todo_and_share(doc, method=None):
+    doc.db_set('opportunity_owner',frappe.session.user)
     user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
     for member in user_group_members:
         if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):
@@ -82,6 +110,33 @@ def enqueue_todo_and_share(doc, method=None):
             user_group=doc.custom_assign_user_group,
             name=doc.name
         )
+
+    # ----------------------send email on oppo created--------------------
+    teams = frappe.get_all('Team')
+    receipients = set()
+
+    # Iterate through each team
+    for team in teams:
+        team_doc = frappe.get_doc('Team', team.name)
+        # Check the child table for the specified user and 'Sales Closure' role
+        if any(member.user == frappe.session.user for member in team_doc.get('user_and_role')):
+            for member in team_doc.get('user_and_role'):
+                if member.role == 'Sales Closure':
+                    receipients.add(member.user)
+    # Send email if recipients are found
+    if receipients:
+        subject = 'Opportunity is Created and Assigned'
+        message = f'''
+        <p>Hello,</p>
+        <p><strong>Sales Closure,</strong></p>
+        <p>A new opportunity is generated and requires an appointment to be scheduled. Here is the link to the opportunity: <a href="https://erp.solarblocks.us/app/opportunity/{doc.name}">{doc.custom_first_name} {doc.custom_last_name}</a></p>
+        '''
+        frappe.sendmail(recipients=list(receipients), message=message, subject=subject)
+
+
+    
+
+    
 
 
 
@@ -120,19 +175,22 @@ def create_event_with_participants(doc,subject,date):
             event.starts_on = date
             event.sync_with_google_calendar = 1
             event.google_calendar = "erp calendar"
-            unique_emails =set()
-            unique_participants = []
             participants = [{"reference_doctype": "Opportunity", "reference_docname": doc.name, "email":'info@solarblocks.us'}]
-            user_group_members = frappe.db.get_all("User Group Member", filters={'parent': 'Sales closure'}, fields={'user'})
-            for user_group_member in user_group_members:
-                email = user_group_member.user
-                participants.append({"reference_doctype": "Opportunity", "reference_docname": doc.name, "email": email})
-            for participant in participants:
-                email = participant["email"]
-                if email not in unique_emails:
-                    unique_emails.add(email)
-                    unique_participants.append(participant)
-            for participant_data in unique_participants:
+
+            parent_user=frappe.session.user
+            receipients = set()
+            teams = frappe.get_all('Team')
+            for team in teams:
+                team_doc = frappe.get_doc('Team', team.name)
+                # Check the child table for the specified user and 'Sales Closure' role
+                if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
+                    for member in team_doc.get('user_and_role'):
+                        if member.role==doc.custom_assign_user_group:
+                            receipients.add(member.user)
+            if receipients:
+                for mail in list(receipients):
+                    participants.append({"reference_doctype": "Opportunity", "reference_docname": doc.name, "email":mail})
+            for participant_data in participants:
                 event_participant = event.append('event_participants', participant_data)
             event.save()
 def assign_users_and_send_mails(doc,Method=None):
@@ -222,7 +280,6 @@ def assign_users_and_send_mails(doc,Method=None):
     #on scheduled appointment
     if doc.opportunity_status=='Proposal' or doc.opportunity_status=='Opportunity' or doc.opportunity_status=='Appointment Scheduled':
         if doc.custom_is_proposed==0 and doc.date_and_time_of_appointment!=None:
-            frappe.throw(f"{doc.email}")
             # frappe.throw(f"{doc.date_and_time_of_appointment}")
             cur_date=doc.date_and_time_of_appointment
             formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")

@@ -10,22 +10,21 @@ def create_event_with_participants(doc,subject,date):
         event.subject = subject  
         event.starts_on = date
         event.sync_with_google_calendar = 1
-        user_group_emails=[]
-        assign_team_emails=[]
         # event.ends_on=frappe.utils.get_datetime('05-15-2024 03:00:21')
         event.google_calendar = "erp calendar"
         participants = [{"reference_doctype": "Lead", "reference_docname": doc.name, "email": doc.email}]
-        user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.assign_user_groups}, fields={'user'})
-        for user_group_member in user_group_members:
-            user_group_emails.append(user_group_member.user)
-        if doc.custom_assign_team:
-            assign_team=frappe.get_doc('Team',doc.custom_assign_team)
-            for i in assign_team.user_and_role:
-                assign_team_emails.append(i.user)
-        receivers=[rece for rece in user_group_emails if rece in assign_team_emails]
-        if receivers==[]:
-            receivers=user_group_emails
-        for email in receivers:
+        
+        parent_user=frappe.session.user
+        receipients = set()
+        teams = frappe.get_all('Team')
+        for team in teams:
+            team_doc = frappe.get_doc('Team', team.name)
+            # Check the child table for the specified user and 'Sales Closure' role
+            if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
+                for member in team_doc.get('user_and_role'):
+                    if member.role=='Sales Closure':
+                        receipients.add(member.user)
+        for email in list(receipients):
             participants.append({"reference_doctype": "Lead", "reference_docname": doc.name, "email": email})
         for participant_data in participants:
             event_participant = event.append('event_participants', participant_data)
@@ -78,7 +77,83 @@ def assign_permissions(doc,doctype_name):
         
 
 
-def create_document_template(doc):
+    
+
+
+def after_save(doc,method=None):
+    doc.db_set('custom_leads_owner',frappe.session.user)
+    if doc.lead_sub_status=='Appointment Setup' and not doc.custom_appointment_status:
+        # frappe.msgprint(f"nahi")
+        cur_date=doc.custom_call_date_and_time
+        formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
+        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - Your Appointment is set for {formatted_date}"
+        create_event_with_participants(doc,subject,cur_date)
+        
+    if doc.custom_appointment_status=='Rescheduled':
+        date=doc.custom_call_date_and_time
+        formatted_date=frappe.utils.format_datetime(date, "MMMM dd yyyy")
+        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - appointment is rescheduled for {formatted_date}"
+        create_event_with_participants(doc,subject,date)
+    if doc.lead_sub_status=='Call at later Date':
+        cur_date=doc.reminder_date1
+        subject=f"Reminder to call {doc.first_name} {doc.last_name} at {doc.street}."
+        create_event_with_participants(doc,subject,cur_date)
+
+    #set user permissin for team
+    if doc.has_value_changed("custom_assign_team"):
+        assign_permissions(doc,'Lead')
+
+    # Image uploader email
+    if doc.has_value_changed("custom_pre_install_status"):
+        if doc.custom_pre_install_status=='Assessment completed - Site Assessor':
+            message=f'''<p>Hey team,</p>
+                        <p>Site Assessment has been completed.<p>
+                        <p>Please review all the pictures and let me know if anything is missing.<p>
+                        <p>Thanks<p>'''
+            parent_user = frappe.session.user
+            recipients = set()
+            teams = frappe.get_all('Team')
+
+            for team in teams:
+                team_doc = frappe.get_doc('Team', team.name)
+                parent_user_in_team = False
+                for member in team_doc.get('user_and_role'):
+                    if member.user == parent_user:
+                        parent_user_in_team = True
+                        break
+
+                if parent_user_in_team:
+                    for member in team_doc.get('user_and_role'):
+                        if member.role =='Design Team':
+                            recipients.add(member.user)
+            frappe.sendmail(recipients=list(recipients),message=message,subject="Site Assessment has been completed.")
+
+    if doc.has_value_changed("custom_post_install_status"):
+        if doc.custom_post_install_status=='Assessment completed - Site Assessor':
+            message=f'''<p>Hey team,</p>
+                        <p>Installtion has been completed.<p>
+                        <p>Please review all the pictures and let me know if anything is missing.<p>
+                        <p>Thanks<p>'''
+            parent_user = frappe.session.user
+            recipients = set()
+            teams = frappe.get_all('Team')
+
+            for team in teams:
+                team_doc = frappe.get_doc('Team', team.name)
+                parent_user_in_team = False
+                for member in team_doc.get('user_and_role'):
+                    if member.user == parent_user:
+                        parent_user_in_team = True
+                        break
+
+                if parent_user_in_team:
+                    for member in team_doc.get('user_and_role'):
+                        if member.role =='Design Team':
+                            recipients.add(member.user)
+            frappe.sendmail(recipients=list(recipients),message=message,subject="Installation has been completed.")
+
+
+def enqueue_create_document_template(doc, method):
     #create document template
     list_of_documents = [
 
@@ -108,33 +183,7 @@ def create_document_template(doc):
     for j in ["Proposal 1","Proposal 2","Proposal 3"]:
         doc.append("custom_proposals", 
         {'name1':j})
-
-
-def after_save(doc,method=None):
-    if doc.lead_sub_status=='Appointment Setup' and not doc.custom_appointment_status:
-        # frappe.msgprint(f"nahi")
-        cur_date=doc.custom_call_date_and_time
-        formatted_date=frappe.utils.format_datetime(cur_date, "MMMM dd yyyy")
-        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - Your Appointment is set for {formatted_date}"
-        create_event_with_participants(doc,subject,cur_date)
-        
-    if doc.custom_appointment_status=='Rescheduled':
-        date=doc.custom_call_date_and_time
-        formatted_date=frappe.utils.format_datetime(date, "MMMM dd yyyy")
-        subject=f"Congratulations!!! {doc.first_name} {doc.last_name} at {doc.street} - appointment is rescheduled for {formatted_date}"
-        create_event_with_participants(doc,subject,date)
-    if doc.lead_sub_status=='Call at later Date':
-        cur_date=doc.reminder_date1
-        subject=f"Reminder to call {doc.first_name} {doc.last_name} at {doc.street}."
-        create_event_with_participants(doc,subject,cur_date)
-
-    #set user permissin for team
-    if doc.has_value_changed("custom_assign_team"):
-        assign_permissions(doc,'Lead')
-
-
-def enqueue_create_document_template(doc, method):
-    frappe.enqueue(create_document_template,queue="long", doc=doc)
+    # frappe.enqueue(create_document_template,queue="long", doc=doc)
 
 
 

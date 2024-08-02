@@ -179,6 +179,28 @@ def after_insert(doc,method=None):
 
     bos.insert()
 
+
+    # -------------------------send mail on project create------------------------
+    teams = frappe.get_all('Team')
+    receipients = set()
+    parent_user=frappe.session.user
+    # Iterate through each team
+    for team in teams:
+        team_doc = frappe.get_doc('Team', team.name)
+        # Check the child table for the specified user and 'Sales Closure' role
+        if any(member.user == parent_user for member in team_doc.get('user_and_role')):
+            for member in team_doc.get('user_and_role'):
+                if member.role ==doc.assign_to_user_group:
+                    receipients.add(member.user)
+    # Send email if recipients are found
+    if receipients:
+        subject = 'Project Assign'
+        message = f'''
+        <p>New Project Assigned</p>
+        '''
+        frappe.sendmail(recipients=list(receipients), message=message, subject=subject)
+
+
                         
                     
                     
