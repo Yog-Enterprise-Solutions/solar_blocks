@@ -194,17 +194,16 @@ def create_event_with_participants(doc,date,formatted_date,schedule_task):
             event_participant = event.append('event_participants', participant_data)
         event.save()
 
-def list_of_rece_for_tasks_emails(subject,message,role):
+def list_of_rece_for_tasks_emails(doc,subject,message,role):
     parent_user=frappe.session.user
     receipients = set()
-    teams = frappe.get_all('Team')
-    for team in teams:
-        team_doc = frappe.get_doc('Team', team.name)
-        # Check the child table for the specified user and 'Sales Closure' role
-        if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
-            for member in team_doc.get('user_and_role'):
-                if member.role==role:
-                    receipients.add(member.user)
+    project=frappe.get_doc('Project',doc.project)
+    team_doc = frappe.get_doc('Team',project.custom_assign_team)
+    # Check the child table for the specified user and 'Sales Closure' role
+    if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
+        for member in team_doc.get('user_and_role'):
+            if member.role==role:
+                receipients.add(member.user)
     if receipients:
         frappe.sendmail(recipients=list(receipients),message=message,subject=subject)
 
@@ -760,98 +759,98 @@ def before_validate(doc,method=None):
             message=f'''<p>Hello,</p>
             <h3>Project Managers,</h3>
             A new project won and requires a Site Visit. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Project Managers')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Project Managers')
 
         if doc.project_status=="In Progress" and doc.subject=="Engineering":
             subject='Requires an Engineering Design'
             message=f'''<p>Hello,</p>
                         <h3>Design Team,</h3>
                         A new project won and requires an Engineering Design. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Design Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Design Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Interconnection":
             subject='Requires an Interconnection'
             message=f'''<p>Hello,</p>
                         <h3>Interconnection Team,</h3>
                         A new project won and requires an Interconnection. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Interconnection Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Interconnection Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Structural Permitting":
             subject='Requires Permitting'
             message=f'''<p>Hello,</p>
                         <h3>Permitting Team,</h3>
                         A new project won and requires Permitting. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.project}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Permitting Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Permitting Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Electrical Permit":
             subject='Requires Electrical Permit'
             message=f'''<p>Hello,</p>
                         <h3>Permitting Team,</h3>
                         A new project won and requires an Electrical Permit. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Permitting Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Permitting Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Procurements":
             subject='Requires a Procurement'
             message=f'''<p>Hello,</p>
                         <h3>Procurement Team,</h3>
                         A new project won and requires a Procurement. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Procurement Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Procurement Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Pre Install Work":
             subject='Requires Pre Install Works'
             message=f'''<p>Hello,</p>
                         <h3>Project Managers,</h3>
                         A new project won and requires Pre Install Works. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Project Managers')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Project Managers')
 
         if doc.project_status=="In Progress" and doc.subject=="Installation Work":
             subject='Requires an Installation'
             message=f'''<p>Hello,</p>
                         <h3>Project Managers,</h3>
                         A new project won and requires an Installation. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Project Managers')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Project Managers')
 
         if doc.project_status=="In Progress" and doc.subject=="Commissioning":
             subject='Requires Commissioning'
             message=f'''<p>Hello,</p>
                         <h3>Design Team,</h3>
                         A new project won and requires commissioning. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Design Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Design Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Electrical Inspection":
             subject='Requires an Electrical Inspection'
             message=f'''<p>Hello,</p>
                     <h3>Project Managers,</h3>
                     A new project won and requires an Electrical Inspection. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Project Managers')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Project Managers')
 
         if doc.project_status=="In Progress" and doc.subject=="Structural Inspection":
             subject='Requires a Structural Inspection'
             message=f'''<p>Hello,</p>
                         <h3>Project Managers,</h3>
                         A new project won and requires a Structural Inspection. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Project Managers')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Project Managers')
 
         if doc.project_status=="In Progress" and doc.subject=="PTO":
             subject='Requires an PTO'
             message=f'''<p>Hello,</p>
                         <h3>Interconnection team,</h3>
                         A new project won and requires an PTO. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Interconnection Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Interconnection Team')
 
         if doc.project_status=="In Progress" and doc.subject=="PTO":
             subject='Requires an PTO'
             message=f'''<p>Hello,</p>
                         <h3>Interconnection team,</h3>
                         A new project won and requires an PTO. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.custom_customer_name}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Interconnection Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Interconnection Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Final submitted":
             subject='Requires a final submission'
             message=f'''<p>Hello,</p>
                         <h3>Permitting team,</h3>
                         A new project won and requires a final submission. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{{ doc.project }}">{{ doc.custom_customer_name }}</a>'''
-            list_of_rece_for_tasks_emails(subject,message,'Permitting Team')
+            list_of_rece_for_tasks_emails(doc,subject,message,'Permitting Team')
     
     
     

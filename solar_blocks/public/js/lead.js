@@ -12,7 +12,7 @@ frappe.ui.form.on('Lead', {
 
         // Hide the field if the user does not have any of the required roles
         if (!has_required_role) {
-            frm.set_df_property('custom_assign_team', 'hidden', 1);
+            // frm.set_df_property('custom_assign_team', 'hidden', 1);
             frm.set_df_property('custom_leads_owner', 'read_only',1);
         }
 	    const relevantRoles = [
@@ -107,6 +107,7 @@ frm.refresh_field('items');
                     // 'contact_person': frm.doc.first_name,
                     // 'contact_email': frm.doc.email_id,    //for test of conversion
                     'contact_email': frm.doc.email,
+                    'custom_assign_team': frm.doc.custom_assign_team,
                     'contact_mobile': frm.doc.mobile_no,
                     'phone_ext': frm.doc.phone_ext,
                     'phone': frm.doc.phone,

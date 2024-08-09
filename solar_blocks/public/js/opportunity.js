@@ -110,6 +110,7 @@ frappe.ui.form.on('Opportunity', {
                         // "custom_utility_bills1":frm.doc.custom_utility_bills1,
                         // "custom_property_tax1":frm.doc.custom_property_tax1,
                         // "custom_property_deed1":frm.doc.custom_property_deed1,
+                        "custom_assign_team":frm.doc.custom_assign_team,
                         "custom_document_status":frm.doc.custom_document_status,
                         "custom_electrical_works":frm.doc.custom_electrical_works,
                         "custom_electrical_works_description":frm.doc.custom_electrical_works_description,
@@ -171,7 +172,7 @@ frappe.ui.form.on('Opportunity', {
 
         // Hide the field if the user does not have any of the required roles
         if (!has_required_role) {
-            frm.set_df_property('custom_assign_team', 'hidden', 1);
+            // frm.set_df_property('custom_assign_team', 'hidden', 1);
         }
                 const roles = [
             'Sales Closure', 

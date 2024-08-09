@@ -16,14 +16,12 @@ def create_event_with_participants(doc,subject,date):
         
         parent_user=frappe.session.user
         receipients = set()
-        teams = frappe.get_all('Team')
-        for team in teams:
-            team_doc = frappe.get_doc('Team', team.name)
-            # Check the child table for the specified user and 'Sales Closure' role
-            if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
-                for member in team_doc.get('user_and_role'):
-                    if member.role=='Sales Closure':
-                        receipients.add(member.user)
+        team_doc = frappe.get_doc('Team',doc.custom_assign_team)
+        # Check the child table for the specified user and 'Sales Closure' role
+        if any(member.user ==parent_user for member in team_doc.get('user_and_role')):
+            for member in team_doc.get('user_and_role'):
+                if member.role=='Sales Closure':
+                    receipients.add(member.user)
         for email in list(receipients):
             participants.append({"reference_doctype": "Lead", "reference_docname": doc.name, "email": email})
         for participant_data in participants:
@@ -111,21 +109,20 @@ def after_save(doc,method=None):
                         <p>Thanks<p>'''
             parent_user = frappe.session.user
             recipients = set()
-            teams = frappe.get_all('Team')
 
-            for team in teams:
-                team_doc = frappe.get_doc('Team', team.name)
-                parent_user_in_team = False
+            team_doc = frappe.get_doc('Team',doc.custom_assign_team)
+            parent_user_in_team = False
+            for member in team_doc.get('user_and_role'):
+                if member.user == parent_user:
+                    parent_user_in_team = True
+                    break
+
+            if parent_user_in_team:
                 for member in team_doc.get('user_and_role'):
-                    if member.user == parent_user:
-                        parent_user_in_team = True
-                        break
-
-                if parent_user_in_team:
-                    for member in team_doc.get('user_and_role'):
-                        if member.role =='Design Team':
-                            recipients.add(member.user)
-            frappe.sendmail(recipients=list(recipients),message=message,subject="Site Assessment has been completed.")
+                    if member.role =='Design Team':
+                        recipients.add(member.user)
+            if receipients:
+                frappe.sendmail(recipients=list(recipients),message=message,subject="Site Assessment has been completed.")
 
     if doc.has_value_changed("custom_post_install_status"):
         if doc.custom_post_install_status=='Assessment completed - Site Assessor':
@@ -135,21 +132,20 @@ def after_save(doc,method=None):
                         <p>Thanks<p>'''
             parent_user = frappe.session.user
             recipients = set()
-            teams = frappe.get_all('Team')
 
-            for team in teams:
-                team_doc = frappe.get_doc('Team', team.name)
-                parent_user_in_team = False
+            team_doc = frappe.get_doc('Team',doc.custom_assign_team)
+            parent_user_in_team = False
+            for member in team_doc.get('user_and_role'):
+                if member.user == parent_user:
+                    parent_user_in_team = True
+                    break
+
+            if parent_user_in_team:
                 for member in team_doc.get('user_and_role'):
-                    if member.user == parent_user:
-                        parent_user_in_team = True
-                        break
-
-                if parent_user_in_team:
-                    for member in team_doc.get('user_and_role'):
-                        if member.role =='Design Team':
-                            recipients.add(member.user)
-            frappe.sendmail(recipients=list(recipients),message=message,subject="Installation has been completed.")
+                    if member.role =='Design Team':
+                        recipients.add(member.user)
+            if receipients:
+                frappe.sendmail(recipients=list(recipients),message=message,subject="Installation has been completed.")
 
 
 def enqueue_create_document_template(doc, method):
