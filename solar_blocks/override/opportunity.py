@@ -98,7 +98,8 @@ def assign_and_share(user_group, name):
         
 
 def enqueue_todo_and_share(doc, method=None):
-    doc.db_set('opportunity_owner',frappe.session.user)
+    full_name=frappe.db.get_value('User',frappe.session.user,'full_name')
+    doc.db_set('opportunity_owner',full_name)
     user_group_members = frappe.db.get_all("User Group Member", filters={'parent': doc.custom_assign_user_group}, fields={'*'})
     for member in user_group_members:
         if not frappe.db.exists('ToDo',{'reference_name':doc.name,'allocated_to':member.user,'status':'Open'}):

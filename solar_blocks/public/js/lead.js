@@ -13,6 +13,7 @@ frappe.ui.form.on('Lead', {
         // Hide the field if the user does not have any of the required roles
         if (!has_required_role) {
             frm.set_df_property('custom_assign_team', 'hidden', 1);
+            frm.set_df_property('custom_leads_owner', 'read_only',1);
         }
 	    const relevantRoles = [
             'Sales Field Agent',

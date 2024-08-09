@@ -456,15 +456,20 @@ def after_save(doc,Method=None):
         #     if doc.schedule_pre_install_works or doc.pre_install_work_completeds and doc.custom_pre_installed_not_required:
         #         doc.db_set('project_status', 'In Progress')
         #         frappe.throw("Either you should complete sub task or not required pre install.")
-        if doc.schedule_pre_install_works and doc.pre_install_work_completeds and not doc.custom_pre_installed_not_required:
-            doc.db_set('project_status', 'Completed')
-            update_multiple_custom_stage(doc.project,'Pre Install Work')
-        elif doc.custom_pre_installed_not_required and not doc.schedule_pre_install_works and not doc.pre_install_work_completeds:
-            doc.db_set('project_status', 'Completed')
-            update_multiple_custom_stage(doc.project,'Pre Install Work')
-        else:
-            if doc.project_status=='Completed':
-                frappe.throw('Task Status Should not be Completed !')
+
+
+
+        # ----comment
+        # if doc.schedule_pre_install_works and doc.pre_install_work_completeds and not doc.custom_pre_installed_not_required:
+        #     doc.db_set('project_status', 'Completed')
+        #     update_multiple_custom_stage(doc.project,'Pre Install Work')
+        # elif doc.custom_pre_installed_not_required and not doc.schedule_pre_install_works and not doc.pre_install_work_completeds:
+        #     doc.db_set('project_status', 'Completed')
+        #     update_multiple_custom_stage(doc.project,'Pre Install Work')
+        # else:
+        #     if doc.project_status=='Completed':
+        #         frappe.throw('Task Status Should not be Completed !')
+        # -----comment
                 
             # if doc.schedule_pre_install_works and doc.pre_install_work_completeds:
             #     pass
@@ -552,11 +557,25 @@ def after_save(doc,Method=None):
         
     if doc.subject.lower() == "structural inspection":
             set_customer(doc)
-            if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
-                pass
+            # -----comment----
+            if doc.structural_inspection_scheduled and doc.structural_inspection_approved and not doc.custom_not_required:
+                doc.db_set('project_status', 'Completed')
+                update_multiple_custom_stage(doc.project,'Structural Inspection')
+            elif doc.custom_not_required:
+                if not doc.structural_inspection_scheduled and not doc.structural_inspection_approved:
+                    doc.db_set('project_status', 'Completed')
+                    update_multiple_custom_stage(doc.project,'Structural Inspection')
             else:
-                if doc.project_status=="Completed":
+                if doc.project_status=='Completed':
                     frappe.throw('Task Status Should not be Completed !')
+
+
+            # -------comment------
+            # if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
+            #     pass
+            # else:
+            #     if doc.project_status=="Completed":
+            #         frappe.throw('Task Status Should not be Completed !')
             if doc.project_status=="Completed":
                 electrical_inspection=frappe.db.get_list('Task',filters={'project':doc.project,'subject':'Electrical Inspection'},fields=['*'])
                 for si in electrical_inspection:
@@ -671,13 +690,13 @@ def after_save(doc,Method=None):
                 if doc.project_status=="Completed":
                     frappe.throw('Task Status Should not be Completed !')
                     
-    if doc.subject.lower() == "structural inspection":
-            set_customer(doc)
-            if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
-                update_multiple_custom_stage(doc.project,'Structural Inspection')
-            else:
-                if doc.project_status=="Completed":
-                    frappe.throw('Task Status Should not be Completed !')
+    # if doc.subject.lower() == "structural inspection":
+    #         set_customer(doc)
+    #         if doc.structural_inspection_scheduled and doc.structural_inspection_approved:
+    #             update_multiple_custom_stage(doc.project,'Structural Inspection')
+    #         else:
+    #             if doc.project_status=="Completed":
+    #                 frappe.throw('Task Status Should not be Completed !')
 
     if doc.subject.lower() == "final submitted":
             set_customer(doc)
@@ -761,7 +780,7 @@ def before_validate(doc,method=None):
             subject='Requires Permitting'
             message=f'''<p>Hello,</p>
                         <h3>Permitting Team,</h3>
-                        A new project won and requires Permitting. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{oc.project}">{doc.project}</a>'''
+                        A new project won and requires Permitting. Here is the link to the project:<a href="https://erp.solarblocks.us/app/project/{doc.project}">{doc.project}</a>'''
             list_of_rece_for_tasks_emails(subject,message,'Permitting Team')
 
         if doc.project_status=="In Progress" and doc.subject=="Electrical Permit":

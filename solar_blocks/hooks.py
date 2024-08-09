@@ -135,10 +135,6 @@ override_doctype_class = {
 # Hook on document methods and events
 
 doc_events = {
-
-    'Team':{
-        'validate':'solar_blocks.solar_blocks.doctype.team.team.assign_roles_to_users'
-        },
     "Lead": {
         "on_update" : "solar_blocks.override.lead.after_save",
         "before_insert" : "solar_blocks.override.lead.enqueue_create_document_template"
@@ -160,6 +156,9 @@ doc_events = {
         "on_update": "solar_blocks.override.project.after_save",
         "validate": "solar_blocks.override.project.before_save",
         "after_insert": "solar_blocks.override.project.after_insert"
+    },
+    "User": {
+        "before_insert": "solar_blocks.override.user.assign_raven_user_role_remove_modules"
     },
     "Error Log": {
         "before_insert": "solar_blocks.override.error_log.error_log_fix"

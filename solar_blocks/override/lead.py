@@ -81,7 +81,6 @@ def assign_permissions(doc,doctype_name):
 
 
 def after_save(doc,method=None):
-    doc.db_set('custom_leads_owner',frappe.session.user)
     if doc.lead_sub_status=='Appointment Setup' and not doc.custom_appointment_status:
         # frappe.msgprint(f"nahi")
         cur_date=doc.custom_call_date_and_time
@@ -154,6 +153,8 @@ def after_save(doc,method=None):
 
 
 def enqueue_create_document_template(doc, method):
+    full_name=frappe.db.get_value('User',frappe.session.user,'full_name')
+    doc.db_set('custom_leads_owner',full_name)
     #create document template
     list_of_documents = [
 
